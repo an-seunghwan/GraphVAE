@@ -22,6 +22,8 @@ from PIL import Image
 from pprint import pprint
 import os
 os.chdir('/Users/anseunghwan/Documents/GitHub/textmining')
+
+import Module
 #%%
 PARAMS = {
     "batch_size": 2000,
@@ -42,11 +44,20 @@ PARAMS = {
 }
 #%%
 data = pd.read_csv('/Users/anseunghwan/Documents/uos/textmining/한국보건사회연구원_데이터_형태소_1월_200818.csv',
-                   encoding='cp949')
+                   encoding='cp949').iloc[:110]
+print(data.head())
+print(data.shape)
 #%%
-data.head()
-data.shape
-data.columns
 keywords = list(data.columns[9:])
+#%%
+'''generator'''
+m = tf.matmul(np.array(data[data.columns[9:]].iloc[:100])[:, :, None],
+            np.array(data[data.columns[9:]].iloc[:100])[:, None, :]).numpy()
+di = np.diag_indices(len(keywords))
+m[:, di] = 0
+m = m + np.eye(len(keywords))
+#%%
+
+
 
 #%%
