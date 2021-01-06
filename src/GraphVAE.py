@@ -35,9 +35,9 @@ PARAMS = {
     "batch_size": 1000,
     "keywords": 300,
     "latent_dim": 2,
-    "sigma": 0.1,
+    "sigma": 1,
     "epochs": 100, 
-    # "beta_final": 1, # variance of observation model
+    "beta_final": 0.01, # variance of observation model
     # "kl_anneal_rate": 0.05,
     # "logistic_anneal": True,
     "learning_rate": 0.005,
@@ -122,15 +122,27 @@ mean, logvar, z, Ahat = model(Atest_tilde)
 '''
 각 기사(n)에서 사용된 keyword들에 대해서만 z를 sampling하고 시각화
 '''
-n = 0
 for n in range(len(z)):
     zmat = np.array(z)
     idx = np.where(np.diag(Atest_.toarray()[n, :].reshape(PARAMS['keywords'], PARAMS['keywords'])) > 0)[0]
-    fig, ax = plt.subplots(figsize=(10, 10))
+    fig, ax = plt.subplots(figsize=(7, 7))
     ax.scatter(zmat[n, idx, 0], zmat[n, idx, 1], s=10)
     for i in idx:
         ax.annotate(keywords[i], (zmat[n, i, 0], zmat[n, i, 1]), fontsize=10)
-    plt.savefig('./result/{}월/encode{}.png'.format(month, n), 
+    plt.savefig('./result/{}월/sample{}.png'.format(month, n), 
+                dpi=200, bbox_inches="tight", pad_inches=0.1)
+#%%
+'''
+각 기사(n)에서 사용된 keyword들에 대해서만 z의 center를 시각화
+'''
+for n in range(len(z)):
+    meanmat = np.array(mean)
+    idx = np.where(np.diag(Atest_.toarray()[n, :].reshape(PARAMS['keywords'], PARAMS['keywords'])) > 0)[0]
+    fig, ax = plt.subplots(figsize=(7, 7))
+    ax.scatter(meanmat[n, idx, 0], meanmat[n, idx, 1], s=10)
+    for i in idx:
+        ax.annotate(keywords[i], (meanmat[n, i, 0], meanmat[n, i, 1]), fontsize=10)
+    plt.savefig('./result/{}월/center{}.png'.format(month, n), 
                 dpi=200, bbox_inches="tight", pad_inches=0.1)
 #%%
 # reconstruction

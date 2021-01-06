@@ -61,11 +61,8 @@ def loss_function(Ahat, A, mean, logvar, beta, PARAMS):
     error = tf.reduce_mean(K.losses.binary_crossentropy(A, Ahat, from_logits=True))
     
     # KL loss by closed form
-    # kl = tf.reduce_mean(
-    #     tf.reduce_sum(0.5 * (tf.math.pow(mean, 2) - 1 + tf.math.exp(logvar) - logvar), axis=(1, 2))
-    #     )
     kl = tf.reduce_mean(
-        tf.reduce_sum(0.5 * (tf.math.pow(mean, 2) / PARAMS['sigma'] - 1 + tf.math.exp(logvar) / PARAMS['sigma'] - logvar + tf.math.log(PARAMS['sigma'])), axis=(1, 2))
+        tf.reduce_sum(0.5 * (tf.math.pow(mean, 2) - 1 + tf.math.exp(logvar) - logvar), axis=(1, 2))
         )
         
     return error + beta * kl, error, kl
