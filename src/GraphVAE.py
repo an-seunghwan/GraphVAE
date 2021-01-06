@@ -20,6 +20,7 @@ import re
 import matplotlib.pyplot as plt
 from PIL import Image
 from pprint import pprint
+import random
 from scipy import sparse
 import os
 os.chdir('/Users/anseunghwan/Documents/GitHub/textmining')
@@ -47,7 +48,9 @@ with open("./result/keywords.txt", "r") as f:
 #%%
 month = 1
 di = np.diag_indices(PARAMS['keywords'])
-filelist = [f for f in os.listdir('/Users/anseunghwan/Documents/uos/textmining/data/{}월/'.format(month)) if f.endswith('.npz')]
+filelist = sorted([f for f in os.listdir('/Users/anseunghwan/Documents/uos/textmining/data/{}월/'.format(month)) if f.endswith('.npz')])
+testn = np.argmin(np.array([os.path.getsize('/Users/anseunghwan/Documents/uos/textmining/data/{}월/'.format(month) + '/' + f) for f in filelist]))
+filelist.remove(filelist[testn])
 I = np.eye(PARAMS['keywords'])
 #%%
 model = Modules.GraphVAE(PARAMS)
@@ -65,7 +68,8 @@ for epoch in range(1, PARAMS["epochs"] + 1):
     # if epoch > PARAMS['epochs'] * (2 / 3):
     #     beta = PARAMS['beta_final']
     
-    for i in tqdm(range(len(filelist)-1)): # permutation needed
+    random.shuffle(filelist) # permutation 
+    for i in tqdm(range(len(filelist)-1)): 
         A = sparse.load_npz('/Users/anseunghwan/Documents/uos/textmining/data/{}월/'.format(month) + filelist[i])
         A = A.toarray().reshape((-1, PARAMS['keywords'], PARAMS['keywords']))
         A[:, di[0], di[1]] = 1 # diagonal element
@@ -118,6 +122,7 @@ for epoch in range(1, PARAMS["epochs"] + 1):
     #     eval_loss = np.mean(losses)
     #     print("Eval Loss:", eval_loss, "\n") 
 #%%
+'''test'''
 A_ = sparse.load_npz('/Users/anseunghwan/Documents/uos/textmining/data/{}월/'.format(month) + filelist[-1])
 A = A_.toarray().reshape((-1, PARAMS['keywords'], PARAMS['keywords']))
 A[:, di[0], di[1]] = 1
@@ -130,7 +135,9 @@ A = A.reshape(-1, PARAMS['keywords'] * PARAMS['keywords'])
 
 mean, logvar, z, Ahat = model(A_tilde)
 #%%
-# sampled z
+'''
+각 기사(n)에서 사용된 keyword들에 대해서만 z를 sampling하고 시각화
+'''
 n = 0
 zmat = np.array(z)
 idx = np.where(np.diag(A_[n].reshape(PARAMS['keywords'], PARAMS['keywords']).toarray()) > 0)[0]
