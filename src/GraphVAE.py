@@ -35,11 +35,11 @@ PARAMS = {
     "batch_size": 1000,
     "keywords": 300,
     "latent_dim": 2,
-    "sigma": 1,
+    "sigma": 0.1,
     "epochs": 100, 
-    "beta_final": 1, # variance of observation model
-    "kl_anneal_rate": 0.05,
-    "logistic_anneal": True,
+    # "beta_final": 1, # variance of observation model
+    # "kl_anneal_rate": 0.05,
+    # "logistic_anneal": True,
     "learning_rate": 0.005,
 }
 
@@ -114,7 +114,8 @@ for epoch in range(1, PARAMS["epochs"] + 1):
     
     mean, logvar, z, Ahat = model(Atest_tilde)
     loss, _, _ = Modules.loss_function(Ahat, Atest, mean, logvar, PARAMS['beta_final'], PARAMS) 
-    print("Eval Loss:", loss.numpy(), "\n") 
+    print("Eval Loss:", loss.numpy()) 
+    print('\n')
 #%%
 mean, logvar, z, Ahat = model(Atest_tilde)
 #%%
