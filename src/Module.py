@@ -10,49 +10,26 @@ import matplotlib.pyplot as plt
 #%%
 class GraphVAE(K.models.Model):
     def __init__(self, params):
-        super(VAE, self).__init__()
+        super(GraphVAE, self).__init__()
         self.params = params
         
-        '''
-        leaky relu is better than tanh where latent variable's value is large
-        '''
-        
-        # encoder
-        self.enc_dense1 = layers.Dense(256, activation='linear')
-        
-        # continuous latent
         self.mean_layer = layers.Dense(self.params['latent_dim'], activation='linear')
         self.logvar_layer = layers.Dense(self.params['latent_dim'], activation='linear')
 
-        # decoder
-        self.dec_dense1 = layers.Dense(256, activation='linear')
-        self.dec_dense2 = layers.Dense(self.params["data_dim"], activation='sigmoid')
-        
-    def decoder(self, x):
-        h = self.dec_dense1(x)
-        h = tf.nn.leaky_relu(h, alpha=0.1)
-        h = self.dec_dense2(h)
-        return h
-
     def call(self, x):
-        latent_dim = self.params["latent_dim"]   
-
         # encoder
-        x = self.enc_dense1(x)
-        x = tf.nn.leaky_relu(x, alpha=0.1)
-        
-        # continous latent
         mean = self.mean_layer(x)
         logvar = self.logvar_layer(x)
-        epsilon = tf.random.normal((self.params["batch_size"], latent_dim))
+        
+        epsilon = tf.random.normal((self.params["batch_size"], self.params['keywords'], self.params['latent_dim']))
         z = mean + tf.math.exp(logvar / 2) * epsilon 
-        # assert z.shape == (self.params["batch_size"], latent_dim)
+        assert z.shape == (self.params["batch_size"], self.params['keywords'], self.params['latent_dim'])
         
         # decoder
-        xhat = self.decoder(z) 
-        # assert xhat.shape == (self.params["batch_size"], self.params['data_dim'])
+        Ahat = tf.matmul(z, tf.transpose(z, [0, 2, 1]))
+        assert Ahat.shape == (self.params["batch_size"], self.params['keywords'], self.params['keywords'])
         
-        return mean, logvar, z, xhat
+        return mean, logvar, z, Ahat
 #%%
 class MixtureVAE(K.models.Model):
     def __init__(self, params):
