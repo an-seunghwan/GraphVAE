@@ -38,6 +38,11 @@ for i in range(1, 10):
 #%%
 keyidx = np.argsort(total)[-300:]
 keywords = list(data[0].columns[9:][keyidx])
+
+# keywords save
+with open("./result/keywords.txt", "w") as f:
+    for w in keywords:
+        f.write(w + '\n')
 #%%
 '''frequency 정보를 모두 1로 맞춤'''
 for j in range(10): 

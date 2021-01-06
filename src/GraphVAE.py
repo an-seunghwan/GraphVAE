@@ -26,9 +26,13 @@ os.chdir('/Users/anseunghwan/Documents/GitHub/textmining')
 
 import Modules
 #%%
+from matplotlib import rc
+rc('font', family='AppleGothic')
+plt.rcParams['axes.unicode_minus'] = False
+#%%
 PARAMS = {
     "batch_size": 1000,
-    "keywords": 500,
+    "keywords": 300,
     "latent_dim": 2,
     "sigma": 1,
     "epochs": 100, 
@@ -37,6 +41,9 @@ PARAMS = {
     "logistic_anneal": True,
     "learning_rate": 0.005,
 }
+
+with open("./result/keywords.txt", "r") as f:
+    keywords = [w.strip('\n') for w in f.readlines()]
 #%%
 month = 1
 di = np.diag_indices(PARAMS['keywords'])
@@ -51,7 +58,6 @@ elbo = []
 bce_losses = []
 kl_losses = []
 for epoch in range(1, PARAMS["epochs"] + 1):
-    
     # KL annealing
     # beta = Modules.kl_anneal(epoch, int(PARAMS["epochs"] / 3), PARAMS) * PARAMS['beta_final'] # KL에 강제로 가중치 for better reconstruction
     # beta = 1 + ((PARAMS['beta_final'] - 1) / int(PARAMS["epochs"] * (2 / 3))) * epoch # reverse annealing
@@ -59,15 +65,17 @@ for epoch in range(1, PARAMS["epochs"] + 1):
     # if epoch > PARAMS['epochs'] * (2 / 3):
     #     beta = PARAMS['beta_final']
     
-    for i in tqdm(range(len(filelist))):
+    for i in tqdm(range(len(filelist)-1)): # permutation needed
         A = sparse.load_npz('/Users/anseunghwan/Documents/uos/textmining/data/{}월/'.format(month) + filelist[i])
         A = A.toarray().reshape((-1, PARAMS['keywords'], PARAMS['keywords']))
-
+        A[:, di[0], di[1]] = 1 # diagonal element
+        
         '''degree matrix'''
         D = I[None, :, :] * np.sqrt(1 / (np.sum(A[:, di[0], di[1]], axis=-1) - 1))[:, None, None]
         A_tilde = tf.cast(D @ A @ D, tf.float32)
-        A = tf.reshape(tf.cast(A, tf.float32), (-1, PARAMS['keywords'] * PARAMS['keywords']))
-        
+        # A = tf.reshape(tf.cast(A, tf.float32), (-1, PARAMS['keywords'] * PARAMS['keywords']))
+        A = A.reshape(-1, PARAMS['keywords'] * PARAMS['keywords'])
+                
         with tf.GradientTape(persistent=True) as tape:
             mean, logvar, z, Ahat = model(A_tilde)
             loss, bce, kl_loss = Modules.loss_function(Ahat, A, mean, logvar, PARAMS['beta_final'], PARAMS) 
@@ -109,4 +117,32 @@ for epoch in range(1, PARAMS["epochs"] + 1):
     #         losses.append(loss)
     #     eval_loss = np.mean(losses)
     #     print("Eval Loss:", eval_loss, "\n") 
+#%%
+A_ = sparse.load_npz('/Users/anseunghwan/Documents/uos/textmining/data/{}월/'.format(month) + filelist[-1])
+A = A_.toarray().reshape((-1, PARAMS['keywords'], PARAMS['keywords']))
+A[:, di[0], di[1]] = 1
+
+'''degree matrix'''
+D = I[None, :, :] * np.sqrt(1 / (np.sum(A[:, di[0], di[1]], axis=-1) - 1))[:, None, None]
+A_tilde = tf.cast(D @ A @ D, tf.float32)
+# A = tf.reshape(tf.cast(A, tf.float32), (-1, PARAMS['keywords'] * PARAMS['keywords']))
+A = A.reshape(-1, PARAMS['keywords'] * PARAMS['keywords'])
+
+mean, logvar, z, Ahat = model(A_tilde)
+#%%
+# sampled z
+n = 0
+zmat = np.array(z)
+idx = np.where(np.diag(A_[n].reshape(PARAMS['keywords'], PARAMS['keywords']).toarray()) > 0)[0]
+fig, ax = plt.subplots(figsize=(10, 10))
+ax.scatter(zmat[n, idx, 0], zmat[n, idx, 1], s=10)
+for i in idx:
+    ax.annotate(keywords[i], (zmat[n, i, 0], zmat[n, i, 1]), fontsize=10)
+plt.savefig('./result/encoded.png', 
+            dpi=200, bbox_inches="tight", pad_inches=0.1)
+#%%
+# reconstruction
+def sigmoid(z):
+    return 1/(1 + np.exp(-z))
+reconA = np.array(sigmoid(zmat[n, :, :] @ zmat[n, :, :].T) > 0.5, dtype=int)
 #%%
