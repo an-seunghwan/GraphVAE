@@ -31,33 +31,21 @@ PARAMS = {
     "keywords": 500,
     "latent_dim": 2,
     "sigma": 1,
-    "epochs": 150, 
+    "epochs": 100, 
     "beta_final": 1, # variance of observation model
     "kl_anneal_rate": 0.05,
     "logistic_anneal": True,
     "learning_rate": 0.005,
 }
 #%%
+month = 1
 di = np.diag_indices(PARAMS['keywords'])
-A = sparse.load_npz('./results/A.npz')
-A = A.toarray().reshape((-1, PARAMS['keywords'], PARAMS['keywords']))
-
-'''degree matrix'''
+filelist = [f for f in os.listdir('/Users/anseunghwan/Documents/uos/textmining/data/{}월/'.format(month)) if f.endswith('.npz')]
 I = np.eye(PARAMS['keywords'])
-D = I * np.sqrt(1/(sum((A)) - 1))
-D = I[None, :, :] * np.sqrt(1 / (np.sum(A[:, di[0], di[1]], axis=-1) - 1))[:, None, None]
-A_tilde = D @ A @ D
-
-A_tilde = tf.cast(A_tilde, tf.float32)
 #%%
 model = Modules.GraphVAE(PARAMS)
 learning_rate = tf.Variable(PARAMS["learning_rate"], trainable=False, name="LR")
 optimizer = tf.keras.optimizers.RMSprop(learning_rate)
-
-mean, logvar, z, Ahat = model(A_tilde)
-A = tf.reshape(tf.cast(A, tf.float32), (-1, PARAMS['keywords'] * PARAMS['keywords']))
-
-loss, bce, kl_loss = Modules.loss_function(Ahat, A, mean, logvar, PARAMS['beta_final'], PARAMS) 
 
 elbo = []
 bce_losses = []
@@ -71,34 +59,33 @@ for epoch in range(1, PARAMS["epochs"] + 1):
     # if epoch > PARAMS['epochs'] * (2 / 3):
     #     beta = PARAMS['beta_final']
     
-    for train_x, train_y in train_dataset:
+    for i in tqdm(range(len(filelist))):
+        A = sparse.load_npz('/Users/anseunghwan/Documents/uos/textmining/data/{}월/'.format(month) + filelist[i])
+        A = A.toarray().reshape((-1, PARAMS['keywords'], PARAMS['keywords']))
+
+        '''degree matrix'''
+        D = I[None, :, :] * np.sqrt(1 / (np.sum(A[:, di[0], di[1]], axis=-1) - 1))[:, None, None]
+        A_tilde = tf.cast(D @ A @ D, tf.float32)
+        A = tf.reshape(tf.cast(A, tf.float32), (-1, PARAMS['keywords'] * PARAMS['keywords']))
+        
         with tf.GradientTape(persistent=True) as tape:
-            mean, logvar, logits, y, z, z_tilde, xhat = model(train_x, tau)
-            loss, mse, kl_loss = Modules.loss_mixture(logits, xhat, train_x, mean, logvar, tau, PARAMS['beta_final'], PARAMS) 
-            # loss, mse, kl_loss = Modules.loss_mixture(logits, xhat, train_x, mean, logvar, tau, beta, PARAMS) 
-            sce = sce_loss(train_y, logits)
-            loss_ = loss + alpha * PARAMS['beta_final'] * sce # cross entropy weight 조절 ?
-            # loss_ = loss + alpha * beta * sce 
+            mean, logvar, z, Ahat = model(A_tilde)
+            loss, bce, kl_loss = Modules.loss_function(Ahat, A, mean, logvar, PARAMS['beta_final'], PARAMS) 
             
-            mse_losses.append(-1 * (mse.numpy() / PARAMS['beta_final']))
+            bce_losses.append(-1 * bce.numpy())
             kl_losses.append(-1 * kl_loss.numpy())
-            sce_losses.append(-1 * sce.numpy())
-            elbo.append(-1 * (mse.numpy() / PARAMS['beta_final']) - 
-                        kl_loss.numpy() - 
-                        sce.numpy() - 
-                        (PARAMS['latent_dim'] / 2) * np.log(2 * np.pi * PARAMS['beta_final']))
+            elbo.append(-1 * bce.numpy() - kl_loss.numpy())
             
-        grad = tape.gradient(loss_, model.weights)
+        grad = tape.gradient(loss, model.weights)
         optimizer.apply_gradients(zip(grad, model.weights))
     
     # change temperature and learning rate
     new_lr = Modules.get_learning_rate(epoch, PARAMS['learning_rate'], PARAMS)
     learning_rate.assign(new_lr)
 
-    print("Epoch:", epoch, ", TRAIN loss:", loss_.numpy(), ", Temperature:", tau)
-    print("MSE:", mse.numpy(), ", CCE:", sce.numpy() ,", KL loss:", kl_loss.numpy(), ", beta:", PARAMS['beta_final'])
-    # print("MSE:", mse.numpy(), ", CCE:", sce.numpy() ,", KL loss:", kl_loss.numpy(), ", beta:", beta)
-    print(np.round(logits.numpy()[0], 3))
+    print('\n')
+    print("Epoch:", epoch, ", TRAIN loss:", loss.numpy())
+    print("BCE:", bce.numpy(), ", KL loss:", kl_loss.numpy(), ", beta:", PARAMS['beta_final'])
     
     # visualization
     # if epoch % 10 == 0:

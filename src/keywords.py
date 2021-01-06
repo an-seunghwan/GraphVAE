@@ -35,12 +35,12 @@ for i in tqdm(range(10)):
 total = np.array(data[0][data[0].columns[9:]].sum(axis=0))
 for i in range(1, 10):
     total += np.array(data[i][data[i].columns[9:]].sum(axis=0))
-
-keyidx = np.argsort(total)[-500:]
+#%%
+keyidx = np.argsort(total)[-300:]
 keywords = list(data[0].columns[9:][keyidx])
 #%%
 '''frequency 정보를 모두 1로 맞춤'''
-for j in range(10):
+for j in range(10): 
     print(j)
     freq = np.array(data[j][data[j].columns[9:][keyidx]])
     freq[np.where(freq > 0)] = 1
@@ -55,10 +55,12 @@ for j in range(10):
         # adj = np.zeros((1, len(keywords), len(keywords)))
         for k in tqdm(range(len(ftemp))):
             '''adjacency matrix'''
-            A = np.array(sparse.csr_matrix(ftemp[[k], :].T).multiply(sparse.csr_matrix(freq[[k], :])).toarray())
+            # A = np.array(sparse.csr_matrix(ftemp[[k], :].T).multiply(sparse.csr_matrix(ftemp[[k], :])).toarray())
+            A = ftemp[[k], :].T @ ftemp[[k], :]
             # adj = np.concatenate((adj, A[None, :, :]), axis=0)
             adj.append(A)
         adj = np.array(adj).reshape(len(adj), -1)
         adj = sparse.csr_matrix(adj)
         sparse.save_npz('/Users/anseunghwan/Documents/uos/textmining/data/{}월/A{}.npz'.format(j+1, i), adj)
+        # np.save('/Users/anseunghwan/Documents/uos/textmining/data/{}월/A{}'.format(j+1, i), adj)
 #%%

@@ -47,25 +47,6 @@ def loss_function(Ahat, A, mean, logvar, beta, PARAMS):
     # reconstruction
     error = tf.reduce_mean(K.losses.binary_crossentropy(A, Ahat, from_logits=True))
     
-    temp = np.isnan(tf.nn.sigmoid_cross_entropy_with_logits(logits=tf.sigmoid(Ahat), labels=A).numpy())
-    tf.nn.sigmoid_cross_entropy_with_logits(logits=tf.sigmoid(Ahat), labels=A).numpy()[temp]
-    Ahat.numpy()[temp]
-    
-    np.where(np.isnan(tf.nn.sigmoid_cross_entropy_with_logits(logits=tf.sigmoid(Ahat), labels=A).numpy()))[0][0]
-    Ahat.numpy()[158, :]
-    
-    np.unique(A.numpy()[158, :])
-   
-    z.numpy()[158, :]
-    
-    A_tilde.numpy()[158, :]
-    
-    mean.numpy()[158, :]
-    logvar.numpy()[158, :]
-    
-    tf.sigmoid(Ahat).numpy()[35, :]
-    A[35: ]
-    
     # KL loss by closed form
     kl = tf.reduce_mean(
         tf.reduce_sum(0.5 * (tf.math.pow(mean, 2) - 1 + tf.math.exp(logvar) - logvar), axis=(1, 2))
