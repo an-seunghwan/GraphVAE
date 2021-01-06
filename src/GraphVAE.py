@@ -50,8 +50,20 @@ month = 1
 di = np.diag_indices(PARAMS['keywords'])
 filelist = sorted([f for f in os.listdir('/Users/anseunghwan/Documents/uos/textmining/data/{}월/'.format(month)) if f.endswith('.npz')])
 testn = np.argmin(np.array([os.path.getsize('/Users/anseunghwan/Documents/uos/textmining/data/{}월/'.format(month) + '/' + f) for f in filelist]))
-filelist.remove(filelist[testn])
+
+'''validation(test)'''
+Atest_ = sparse.load_npz('/Users/anseunghwan/Documents/uos/textmining/data/{}월/'.format(month) + filelist[testn])
+Atest = Atest_.toarray().reshape((-1, PARAMS['keywords'], PARAMS['keywords']))
+Atest[:, di[0], di[1]] = 1
+
+# degree matrix
 I = np.eye(PARAMS['keywords'])
+D = I[None, :, :] * np.sqrt(1 / (np.sum(Atest[:, di[0], di[1]], axis=-1) - 1))[:, None, None]
+Atest_tilde = tf.cast(D @ Atest @ D, tf.float32)
+# A = tf.reshape(tf.cast(A, tf.float32), (-1, PARAMS['keywords'] * PARAMS['keywords']))
+Atest = Atest.reshape(-1, PARAMS['keywords'] * PARAMS['keywords'])
+
+filelist.remove(filelist[testn])
 #%%
 model = Modules.GraphVAE(PARAMS)
 learning_rate = tf.Variable(PARAMS["learning_rate"], trainable=False, name="LR")
@@ -99,54 +111,25 @@ for epoch in range(1, PARAMS["epochs"] + 1):
     print("Epoch:", epoch, ", TRAIN loss:", loss.numpy())
     print("BCE:", bce.numpy(), ", KL loss:", kl_loss.numpy(), ", beta:", PARAMS['beta_final'])
     
-    # visualization
-    # if epoch % 10 == 0:
-    #     GMGS_module.center_reconstruction(model, epoch, PARAMS)
-    #     GMGS_module.example_reconstruction(train_x, y, xhat)
-    #     GMGS_module.z_space(z, PARAMS)
-    
-    # if epoch % 1 == 0:
-    #     losses = [] # only ELBO loss
-    #     for test_x, test_y in test_dataset:
-    #         mean, logvar, logits, y, z, z_tilde, xhat = model(test_x, tau)
-    #         if key == 'proposal':
-    #             loss, _, _ = GMGS_module.loss_closedform(logits, xhat, test_x, mean, logvar, tau, beta, PARAMS) 
-    #         else:
-    #             loss, _, _ = GMGS_module.loss_without(logits, xhat, test_x, mean, logvar, tau, beta, PARAMS) 
-    #         loss2 = sce_loss(test_y, logits)
-    #         # cross entropy weight 조절 (annealing)
-    #         # loss = loss + 10 * loss2 # annealing on cross-entropy beta = 1
-    #         # loss = loss + 5 * loss2 # annealing on cross-entropy beta = 0.5
-    #         loss = loss + loss2 # annealing on cross-entropy beta = 0.05
-    #         losses.append(loss)
-    #     eval_loss = np.mean(losses)
-    #     print("Eval Loss:", eval_loss, "\n") 
+    mean, logvar, z, Ahat = model(Atest_tilde)
+    loss, _, _ = Modules.loss_function(Ahat, Atest, mean, logvar, PARAMS['beta_final'], PARAMS) 
+    print("Eval Loss:", loss.numpy(), "\n") 
 #%%
-'''test'''
-A_ = sparse.load_npz('/Users/anseunghwan/Documents/uos/textmining/data/{}월/'.format(month) + filelist[-1])
-A = A_.toarray().reshape((-1, PARAMS['keywords'], PARAMS['keywords']))
-A[:, di[0], di[1]] = 1
-
-'''degree matrix'''
-D = I[None, :, :] * np.sqrt(1 / (np.sum(A[:, di[0], di[1]], axis=-1) - 1))[:, None, None]
-A_tilde = tf.cast(D @ A @ D, tf.float32)
-# A = tf.reshape(tf.cast(A, tf.float32), (-1, PARAMS['keywords'] * PARAMS['keywords']))
-A = A.reshape(-1, PARAMS['keywords'] * PARAMS['keywords'])
-
-mean, logvar, z, Ahat = model(A_tilde)
+mean, logvar, z, Ahat = model(Atest_tilde)
 #%%
 '''
 각 기사(n)에서 사용된 keyword들에 대해서만 z를 sampling하고 시각화
 '''
 n = 0
-zmat = np.array(z)
-idx = np.where(np.diag(A_[n].reshape(PARAMS['keywords'], PARAMS['keywords']).toarray()) > 0)[0]
-fig, ax = plt.subplots(figsize=(10, 10))
-ax.scatter(zmat[n, idx, 0], zmat[n, idx, 1], s=10)
-for i in idx:
-    ax.annotate(keywords[i], (zmat[n, i, 0], zmat[n, i, 1]), fontsize=10)
-plt.savefig('./result/encoded.png', 
-            dpi=200, bbox_inches="tight", pad_inches=0.1)
+for n in range(len(z)):
+    zmat = np.array(z)
+    idx = np.where(np.diag(Atest_.toarray()[n, :].reshape(PARAMS['keywords'], PARAMS['keywords'])) > 0)[0]
+    fig, ax = plt.subplots(figsize=(10, 10))
+    ax.scatter(zmat[n, idx, 0], zmat[n, idx, 1], s=10)
+    for i in idx:
+        ax.annotate(keywords[i], (zmat[n, i, 0], zmat[n, i, 1]), fontsize=10)
+    plt.savefig('./result/{}월/encode{}.png'.format(month, n), 
+                dpi=200, bbox_inches="tight", pad_inches=0.1)
 #%%
 # reconstruction
 def sigmoid(z):
