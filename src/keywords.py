@@ -31,28 +31,34 @@ for i in tqdm(range(10)):
                 encoding='cp949'))
 #%%
 '''keyword selection'''
-keyidx = np.argsort(np.array(data[data.columns[9:]].sum(axis=0)))[-100:]
-keywords = list(data.columns[9:][keyidx])
-PARAMS['keywords'] = len(keywords)
-# data[data.columns[9:]].sum(axis=0)[np.argsort(np.array(data[data.columns[9:]].sum(axis=0)))[-100:]]
+# total frequency
+total = np.array(data[0][data[0].columns[9:]].sum(axis=0))
+for i in range(1, 10):
+    total += np.array(data[i][data[i].columns[9:]].sum(axis=0))
+
+keyidx = np.argsort(total)[-500:]
+keywords = list(data[0].columns[9:][keyidx])
 #%%
 '''frequency 정보를 모두 1로 맞춤'''
-freq = np.array(data[data.columns[9:][keyidx]])
-freq[np.where(freq > 0)] = 1
+for j in range(10):
+    print(j)
+    freq = np.array(data[j][data[j].columns[9:][keyidx]])
+    freq[np.where(freq > 0)] = 1
+    
+    # the number of nodes at least: 10
+    freq = freq[np.where(np.sum(freq, axis=-1) > 10)[0], :]
+
+    for i in range(int(len(freq) / 1000) + 1):
+        print(i)
+        ftemp = freq[1000*i : 1000*(i+1), :]
+        adj = []
+        # adj = np.zeros((1, len(keywords), len(keywords)))
+        for k in tqdm(range(len(ftemp))):
+            '''adjacency matrix'''
+            A = np.array(sparse.csr_matrix(ftemp[[k], :].T).multiply(sparse.csr_matrix(freq[[k], :])).toarray())
+            # adj = np.concatenate((adj, A[None, :, :]), axis=0)
+            adj.append(A)
+        adj = np.array(adj).reshape(len(adj), -1)
+        adj = sparse.csr_matrix(adj)
+        sparse.save_npz('/Users/anseunghwan/Documents/uos/textmining/data/{}월/A{}.npz'.format(j+1, i), adj)
 #%%
-# '''adjacency matrix'''
-# adj = tf.matmul(freq[:, :, None], freq[:, None, :]).numpy()
-# di = np.diag_indices(len(keywords))
-# adj[:, di] = 1
-# np.sqrt(1/(freq.sum(axis=1) - 1))
-#%%
-adj = []
-# adj = np.zeros((1, len(keywords), len(keywords)))
-for i in tqdm(range(len(freq))):
-    '''adjacency matrix'''
-    A = np.array(sparse.csr_matrix(freq[[i], :].T).multiply(sparse.csr_matrix(freq[[i], :])).toarray())
-    # adj = np.concatenate((adj, A[None, :, :]), axis=0)
-    adj.append(A)
-adj = np.array(adj).reshape(len(adj), -1)
-adj = sparse.csr_matrix(adj)
-sparse.save_npz('./results/A.npz', adj)

@@ -21,13 +21,16 @@ class GraphVAE(K.models.Model):
         mean = self.mean_layer(x)
         logvar = self.logvar_layer(x)
         
-        epsilon = tf.random.normal((self.params["batch_size"], self.params['keywords'], self.params['latent_dim']))
+        # epsilon = tf.random.normal((self.params["batch_size"], self.params['keywords'], self.params['latent_dim']))
+        epsilon = tf.random.normal((x.shape[0], self.params['keywords'], self.params['latent_dim']))
         z = mean + tf.math.exp(logvar / 2) * epsilon 
-        assert z.shape == (self.params["batch_size"], self.params['keywords'], self.params['latent_dim'])
+        # assert z.shape == (self.params["batch_size"], self.params['keywords'], self.params['latent_dim'])
+        assert z.shape == (x.shape[0], self.params['keywords'], self.params['latent_dim'])
         
         # decoder
         Ahat = tf.reshape(tf.matmul(z, tf.transpose(z, [0, 2, 1])), (-1, self.params['keywords'] * self.params['keywords']))
-        assert Ahat.shape == (self.params["batch_size"], self.params['keywords'] * self.params['keywords'])
+        # assert Ahat.shape == (self.params["batch_size"], self.params['keywords'] * self.params['keywords'])
+        assert Ahat.shape == (x.shape[0], self.params['keywords'] * self.params['keywords'])
         
         return mean, logvar, z, Ahat
 #%%

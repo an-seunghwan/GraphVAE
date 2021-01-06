@@ -29,18 +29,13 @@ import Modules
 PARAMS = {
     "batch_size": 1000,
     "keywords": 500,
-    # "class_num": 10,
     "latent_dim": 2,
     "sigma": 1,
     "epochs": 150, 
-    "beta_final": 0.01, # variance of observation model
+    "beta_final": 1, # variance of observation model
     "kl_anneal_rate": 0.05,
     "logistic_anneal": True,
-    # "temperature_anneal_rate": 0.0003,
-    # "init_temperature": 3.0, 
-    # "min_temperature": 1.0,
     "learning_rate": 0.005,
-    # "hard": True,
 }
 #%%
 di = np.diag_indices(PARAMS['keywords'])
