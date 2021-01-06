@@ -24,11 +24,11 @@ from scipy import sparse
 import os
 os.chdir('/Users/anseunghwan/Documents/GitHub/textmining')
 
-import Module
+import Modules
 #%%
 PARAMS = {
     "batch_size": 1000,
-    # "data_dim": 784,
+    "keywords": 500,
     # "class_num": 10,
     "latent_dim": 2,
     "sigma": 1,
@@ -43,43 +43,88 @@ PARAMS = {
     # "hard": True,
 }
 #%%
-data = pd.read_csv('/Users/anseunghwan/Documents/uos/textmining/한국보건사회연구원_데이터_형태소_1월_200818.csv',
-                   encoding='cp949').iloc[:1000]
-print(data.head())
-print(data.shape)
-keywords = list(data.columns[9:])
-PARAMS['keywords'] = len(keywords)
-#%%
-'''frequency 정보를 모두 1로 맞춤'''
-freq = np.array(data[data.columns[9:]])
-freq[np.where(freq > 0)] = 1
-#%%
-# '''adjacency matrix'''
-# adj = tf.matmul(freq[:, :, None], freq[:, None, :]).numpy()
-# di = np.diag_indices(len(keywords))
-# adj[:, di] = 1
-# np.sqrt(1/(freq.sum(axis=1) - 1))
-#%%
-adj = []
-# adj = np.zeros((1, len(keywords), len(keywords)))
-di = np.diag_indices(len(keywords))
-I = np.eye(len(keywords))
-for i in tqdm(range(len(freq))):
-    '''adjacency matrix'''
-    A = np.array(sparse.csr_matrix(freq[[i], :].T).multiply(sparse.csr_matrix(freq[[i], :])).toarray())
-    A[di] = 1
-    '''degree matrix'''
-    D = I * np.sqrt(1/(sum(freq[i, :]) - 1))
-    A = D @ A @ D
-    # adj = np.concatenate((adj, A[None, :, :]), axis=0)
-    adj.append(A)
-adj = np.array(adj)
-adj = sparse.csr_matrix(adj)
-sparse.save_npz('./result/sparse_matrix.npz', adj)
-#%%
-x = tf.cast(adj, tf.float32)
-#%%
+di = np.diag_indices(PARAMS['keywords'])
+A = sparse.load_npz('./results/A.npz')
+A = A.toarray().reshape((-1, PARAMS['keywords'], PARAMS['keywords']))
 
-#%%
+'''degree matrix'''
+I = np.eye(PARAMS['keywords'])
+D = I * np.sqrt(1/(sum((A)) - 1))
+D = I[None, :, :] * np.sqrt(1 / (np.sum(A[:, di[0], di[1]], axis=-1) - 1))[:, None, None]
+A_tilde = D @ A @ D
 
+A_tilde = tf.cast(A_tilde, tf.float32)
+#%%
+model = Modules.GraphVAE(PARAMS)
+learning_rate = tf.Variable(PARAMS["learning_rate"], trainable=False, name="LR")
+optimizer = tf.keras.optimizers.RMSprop(learning_rate)
+
+mean, logvar, z, Ahat = model(A_tilde)
+A = tf.reshape(tf.cast(A, tf.float32), (-1, PARAMS['keywords'] * PARAMS['keywords']))
+
+loss, bce, kl_loss = Modules.loss_function(Ahat, A, mean, logvar, PARAMS['beta_final'], PARAMS) 
+
+elbo = []
+bce_losses = []
+kl_losses = []
+for epoch in range(1, PARAMS["epochs"] + 1):
+    
+    # KL annealing
+    # beta = Modules.kl_anneal(epoch, int(PARAMS["epochs"] / 3), PARAMS) * PARAMS['beta_final'] # KL에 강제로 가중치 for better reconstruction
+    # beta = 1 + ((PARAMS['beta_final'] - 1) / int(PARAMS["epochs"] * (2 / 3))) * epoch # reverse annealing
+    
+    # if epoch > PARAMS['epochs'] * (2 / 3):
+    #     beta = PARAMS['beta_final']
+    
+    for train_x, train_y in train_dataset:
+        with tf.GradientTape(persistent=True) as tape:
+            mean, logvar, logits, y, z, z_tilde, xhat = model(train_x, tau)
+            loss, mse, kl_loss = Modules.loss_mixture(logits, xhat, train_x, mean, logvar, tau, PARAMS['beta_final'], PARAMS) 
+            # loss, mse, kl_loss = Modules.loss_mixture(logits, xhat, train_x, mean, logvar, tau, beta, PARAMS) 
+            sce = sce_loss(train_y, logits)
+            loss_ = loss + alpha * PARAMS['beta_final'] * sce # cross entropy weight 조절 ?
+            # loss_ = loss + alpha * beta * sce 
+            
+            mse_losses.append(-1 * (mse.numpy() / PARAMS['beta_final']))
+            kl_losses.append(-1 * kl_loss.numpy())
+            sce_losses.append(-1 * sce.numpy())
+            elbo.append(-1 * (mse.numpy() / PARAMS['beta_final']) - 
+                        kl_loss.numpy() - 
+                        sce.numpy() - 
+                        (PARAMS['latent_dim'] / 2) * np.log(2 * np.pi * PARAMS['beta_final']))
+            
+        grad = tape.gradient(loss_, model.weights)
+        optimizer.apply_gradients(zip(grad, model.weights))
+    
+    # change temperature and learning rate
+    new_lr = Modules.get_learning_rate(epoch, PARAMS['learning_rate'], PARAMS)
+    learning_rate.assign(new_lr)
+
+    print("Epoch:", epoch, ", TRAIN loss:", loss_.numpy(), ", Temperature:", tau)
+    print("MSE:", mse.numpy(), ", CCE:", sce.numpy() ,", KL loss:", kl_loss.numpy(), ", beta:", PARAMS['beta_final'])
+    # print("MSE:", mse.numpy(), ", CCE:", sce.numpy() ,", KL loss:", kl_loss.numpy(), ", beta:", beta)
+    print(np.round(logits.numpy()[0], 3))
+    
+    # visualization
+    # if epoch % 10 == 0:
+    #     GMGS_module.center_reconstruction(model, epoch, PARAMS)
+    #     GMGS_module.example_reconstruction(train_x, y, xhat)
+    #     GMGS_module.z_space(z, PARAMS)
+    
+    # if epoch % 1 == 0:
+    #     losses = [] # only ELBO loss
+    #     for test_x, test_y in test_dataset:
+    #         mean, logvar, logits, y, z, z_tilde, xhat = model(test_x, tau)
+    #         if key == 'proposal':
+    #             loss, _, _ = GMGS_module.loss_closedform(logits, xhat, test_x, mean, logvar, tau, beta, PARAMS) 
+    #         else:
+    #             loss, _, _ = GMGS_module.loss_without(logits, xhat, test_x, mean, logvar, tau, beta, PARAMS) 
+    #         loss2 = sce_loss(test_y, logits)
+    #         # cross entropy weight 조절 (annealing)
+    #         # loss = loss + 10 * loss2 # annealing on cross-entropy beta = 1
+    #         # loss = loss + 5 * loss2 # annealing on cross-entropy beta = 0.5
+    #         loss = loss + loss2 # annealing on cross-entropy beta = 0.05
+    #         losses.append(loss)
+    #     eval_loss = np.mean(losses)
+    #     print("Eval Loss:", eval_loss, "\n") 
 #%%
