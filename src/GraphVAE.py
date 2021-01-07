@@ -61,7 +61,8 @@ I = np.eye(PARAMS['keywords'])
 D = I[None, :, :] * np.sqrt(1 / (np.sum(Atest[:, di[0], di[1]], axis=-1) - 1))[:, None, None]
 '''matmul with tensorflow (faster)'''
 # Atest_tilde = tf.cast(D @ Atest @ D, tf.float32)
-Atest_tilde = tf.matmul(tf.matmul(tf.cast(D, tf.float32), tf.cast(Atest, tf.float32)), tf.cast(D, tf.float32))
+Atest = tf.cast(Atest, tf.float32)
+Atest_tilde = tf.matmul(tf.matmul(tf.cast(D, tf.float32), Atest), tf.cast(D, tf.float32))
 '''reshape'''
 # A = tf.reshape(tf.cast(A, tf.float32), (-1, PARAMS['keywords'] * PARAMS['keywords']))
 # Atest = tf.reshape(tf.cast(Atest, tf.float32), (-1, PARAMS['keywords'] * PARAMS['keywords']))
@@ -134,15 +135,15 @@ mean, logvar, z, Ahat = model(Atest_tilde)
 '''
 각 기사(n)에서 사용된 keyword들에 대해서만 z를 sampling하고 시각화
 '''
-for n in range(len(z)):
-    zmat = np.array(z)
-    idx = np.where(np.diag(Atest_.toarray()[n, :].reshape(PARAMS['keywords'], PARAMS['keywords'])) > 0)[0]
-    fig, ax = plt.subplots(figsize=(7, 7))
-    ax.scatter(zmat[n, idx, 0], zmat[n, idx, 1], s=10)
-    for i in idx:
-        ax.annotate(keywords[i], (zmat[n, i, 0], zmat[n, i, 1]), fontsize=10)
-    plt.savefig('./result/{}월/sample{}.png'.format(month, n), 
-                dpi=200, bbox_inches="tight", pad_inches=0.1)
+# for n in range(len(z)):
+#     zmat = np.array(z)
+#     idx = np.where(np.diag(Atest_.toarray()[n, :].reshape(PARAMS['keywords'], PARAMS['keywords'])) > 0)[0]
+#     fig, ax = plt.subplots(figsize=(7, 7))
+#     ax.scatter(zmat[n, idx, 0], zmat[n, idx, 1], s=10)
+#     for i in idx:
+#         ax.annotate(keywords[i], (zmat[n, i, 0], zmat[n, i, 1]), fontsize=10)
+#     plt.savefig('./result/{}월/sample{}.png'.format(month, n), 
+#                 dpi=200, bbox_inches="tight", pad_inches=0.1)
 #%%
 '''
 각 기사(n)에서 사용된 keyword들에 대해서 z의 center를 시각화
