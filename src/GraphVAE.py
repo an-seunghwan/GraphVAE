@@ -37,7 +37,7 @@ PARAMS = {
     "latent_dim": 2,
     "sigma": 1,
     "epochs": 100, 
-    "beta": 2, 
+    "beta": 1, 
     # "kl_anneal_rate": 0.05,
     # "logistic_anneal": True,
     "learning_rate": 0.01,

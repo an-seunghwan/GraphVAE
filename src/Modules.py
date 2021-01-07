@@ -76,9 +76,10 @@ def get_learning_rate(epoch, init, PARAMS):
 def loss_function(Ahat, A, mean, logvar, beta, PARAMS):
     # reconstruction
     # error = tf.reduce_mean(K.losses.binary_crossentropy(A, Ahat, from_logits=True))
+    error = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(A, Ahat))
     '''가중치 부여'''
     # error = tf.reduce_mean(tf.multiply((beta*A)+1, tf.nn.sigmoid_cross_entropy_with_logits(A, Ahat)))
-    error = tf.reduce_mean(tf.nn.weighted_cross_entropy_with_logits(A, Ahat, pos_weight=beta))
+    # error = tf.reduce_mean(tf.nn.weighted_cross_entropy_with_logits(A, Ahat, pos_weight=beta))
         
     # KL loss by closed form
     kl = tf.reduce_mean(
