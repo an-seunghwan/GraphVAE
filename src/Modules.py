@@ -13,26 +13,15 @@ class GraphVAE(K.models.Model):
         super(GraphVAE, self).__init__()
         self.params = params
         
-        self.mean_layer = layers.Dense(self.params['latent_dim'], activation='linear')
-        self.logvar_layer = layers.Dense(self.params['latent_dim'], activation='linear')
+        self.mean_layer = layers.Dense(self.params['latent_dim'], activation='linear',
+                                       use_bias=False)
+        self.logvar_layer = layers.Dense(self.params['latent_dim'], activation='linear',
+                                        use_bias=False)
         
-    # def build(self, input_shape):  
-    #     w_init = tf.random_normal_initializer()
-    #     self.w_mu = tf.Variable(initial_value=w_init(shape=(input_shape[-1], self.params['latent_dim']),
-    #                             dtype='float32'), trainable=True)
-    #     self.w_var = tf.Variable(initial_value=w_init(shape=(input_shape[-1], self.params['latent_dim']), 
-    #                             dtype='float32'), trainable=True)
-
     def call(self, x):
         # encoder
         mean = self.mean_layer(x)
         logvar = self.logvar_layer(x)
-        
-        # mean = tf.sparse.sparse_dense_matmul(x, self.w_mu)
-        # logvar = tf.sparse.sparse_dense_matmul(x, self.w_var)
-        
-        # mean = tf.matmul(x, self.w_mu, a_is_sparse=True)
-        # logvar = tf.matmul(x, self.w_var, a_is_sparse=True)
         
         # epsilon = tf.random.normal((self.params["batch_size"], self.params['keywords'], self.params['latent_dim']))
         epsilon = tf.random.normal((x.shape[0], self.params['keywords'], self.params['latent_dim']))
@@ -44,6 +33,32 @@ class GraphVAE(K.models.Model):
         Ahat = tf.reshape(tf.matmul(z, tf.transpose(z, [0, 2, 1])), (-1, self.params['keywords'] * self.params['keywords']))
         # assert Ahat.shape == (self.params["batch_size"], self.params['keywords'] * self.params['keywords'])
         assert Ahat.shape == (x.shape[0], self.params['keywords'] * self.params['keywords'])
+        
+        return mean, logvar, z, Ahat
+#%%
+class SparseGraphVAE(K.models.Model):
+    def __init__(self, params):
+        super(SparseGraphVAE, self).__init__()
+        self.params = params
+        
+        w_init = tf.random_normal_initializer()
+        self.w_mean = tf.Variable(initial_value=w_init(shape=(self.params['keywords'], self.params['latent_dim']),
+                                dtype='float32'), trainable=True)
+        self.w_var = tf.Variable(initial_value=w_init(shape=(self.params['keywords'], self.params['latent_dim']), 
+                                dtype='float32'), trainable=True)
+
+    def call(self, x):
+        # encoder
+        mean = tf.sparse.sparse_dense_matmul(x, self.w_mean)
+        logvar = tf.sparse.sparse_dense_matmul(x, self.w_var)
+        
+        epsilon = tf.random.normal((self.params['keywords'], self.params['latent_dim']))
+        z = mean + tf.math.exp(logvar / 2) * epsilon 
+        assert z.shape == (self.params['keywords'], self.params['latent_dim'])
+        
+        # decoder
+        Ahat = tf.reshape(tf.matmul(z, tf.transpose(z, [1, 0])), (1, self.params['keywords'] * self.params['keywords']))
+        assert Ahat.shape == (1, self.params['keywords'] * self.params['keywords'])
         
         return mean, logvar, z, Ahat
 #%%
