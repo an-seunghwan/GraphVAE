@@ -37,7 +37,7 @@ PARAMS = {
     "latent_dim": 2,
     "sigma": 1,
     "epochs": 100, 
-    "beta_final": 2, 
+    "beta": 2, 
     # "kl_anneal_rate": 0.05,
     # "logistic_anneal": True,
     "learning_rate": 0.01,
@@ -46,13 +46,13 @@ PARAMS = {
 with open("./result/keywords.txt", "r") as f:
     keywords = [w.strip('\n') for w in f.readlines()]
 #%%
-month = 1
 di = np.diag_indices(PARAMS['keywords'])
-filelist = sorted([f for f in os.listdir('/Users/anseunghwan/Documents/uos/textmining/data/{}월/'.format(month)) if f.endswith('.npz')])
-testn = np.argmin(np.array([os.path.getsize('/Users/anseunghwan/Documents/uos/textmining/data/{}월/'.format(month) + '/' + f) for f in filelist]))
+filelist = sorted([f for f in os.listdir('/Users/anseunghwan/Documents/uos/textmining/data/') if f.endswith('.npz')])
+# testn = np.argmin(np.array([os.path.getsize('/Users/anseunghwan/Documents/uos/textmining/data/' + f) for f in filelist]))
+testn = len(filelist)-1
 
 '''validation(test)'''
-Atest_ = sparse.load_npz('/Users/anseunghwan/Documents/uos/textmining/data/{}월/'.format(month) + filelist[testn])
+Atest_ = sparse.load_npz('/Users/anseunghwan/Documents/uos/textmining/data/Atest.npz')
 Atest = Atest_.toarray().reshape((-1, PARAMS['keywords'], PARAMS['keywords']))
 Atest[:, di[0], di[1]] = 1
 
@@ -89,7 +89,7 @@ for epoch in range(1, PARAMS["epochs"] + 1):
     random.shuffle(filelist) # permutation 
     for i in tqdm(range(len(filelist))): 
         '''adjacency matrix'''
-        A = sparse.load_npz('/Users/anseunghwan/Documents/uos/textmining/data/{}월/'.format(month) + filelist[i])
+        A = sparse.load_npz('/Users/anseunghwan/Documents/uos/textmining/data/' + filelist[i])
         A = A.toarray().reshape((-1, PARAMS['keywords'], PARAMS['keywords']))
         A[:, di[0], di[1]] = 1 # diagonal element
         
@@ -108,7 +108,7 @@ for epoch in range(1, PARAMS["epochs"] + 1):
                 
         with tf.GradientTape(persistent=True) as tape:
             mean, logvar, z, Ahat = model(A_tilde)
-            loss, bce, kl_loss = Modules.loss_function(Ahat, A, mean, logvar, PARAMS['beta_final'], PARAMS) 
+            loss, bce, kl_loss = Modules.loss_function(Ahat, A, mean, logvar, PARAMS['beta'], PARAMS) 
             
             bce_losses.append(-1 * bce.numpy())
             kl_losses.append(-1 * kl_loss.numpy())
@@ -123,10 +123,10 @@ for epoch in range(1, PARAMS["epochs"] + 1):
 
     print('\n')
     print("Epoch:", epoch, ", TRAIN loss:", loss.numpy())
-    print("BCE:", bce.numpy(), ", KL loss:", kl_loss.numpy(), ", beta:", PARAMS['beta_final'])
+    print("BCE:", bce.numpy(), ", KL loss:", kl_loss.numpy(), ", beta:", PARAMS['beta'])
     
     mean, logvar, z, Ahat = model(Atest_tilde)
-    loss, _, _ = Modules.loss_function(Ahat, Atest, mean, logvar, PARAMS['beta_final'], PARAMS) 
+    loss, _, _ = Modules.loss_function(Ahat, Atest, mean, logvar, PARAMS['beta'], PARAMS) 
     print("Eval Loss:", loss.numpy()) 
     print('\n')
 #%%
