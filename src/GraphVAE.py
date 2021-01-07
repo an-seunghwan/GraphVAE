@@ -133,29 +133,30 @@ for n in range(len(z)):
                 dpi=200, bbox_inches="tight", pad_inches=0.1)
 #%%
 '''
-각 기사(n)에서 사용된 keyword들에 대해서만 z의 center를 시각화
+각 기사(n)에서 사용된 keyword들에 대해서 z의 center를 시각화
 '''
+# for n in range(len(z)):
+#     meanmat = np.array(mean)
+#     idx = np.where(np.diag(Atest_.toarray()[n, :].reshape(PARAMS['keywords'], PARAMS['keywords'])) > 0)[0]
+#     fig, ax = plt.subplots(figsize=(7, 7))
+#     # ax.set_xlim(np.min(meanmat[n, idx, 0]), np.max(meanmat[n, idx, 0]))
+#     # ax.set_ylim(np.min(meanmat[n, idx, 1]), np.max(meanmat[n, idx, 1]))
+#     ax.scatter(meanmat[n, idx, 0], meanmat[n, idx, 1], s=10)
+#     for i in idx:
+#         ax.annotate(keywords[i], (meanmat[n, i, 0], meanmat[n, i, 1]), fontsize=10)
+#     plt.savefig('./result/{}월/center{}.png'.format(month, n), 
+#                 dpi=200, bbox_inches="tight", pad_inches=0.1)
+
 for n in range(len(z)):
     meanmat = np.array(mean)
-    idx = np.where(np.diag(Atest_.toarray()[n, :].reshape(PARAMS['keywords'], PARAMS['keywords'])) > 0)[0]
-    fig, ax = plt.subplots(figsize=(7, 7))
+    fig, ax = plt.subplots(figsize=(10, 10))
     # ax.set_xlim(np.min(meanmat[n, idx, 0]), np.max(meanmat[n, idx, 0]))
     # ax.set_ylim(np.min(meanmat[n, idx, 1]), np.max(meanmat[n, idx, 1]))
-    ax.scatter(meanmat[n, idx, 0], meanmat[n, idx, 1], s=10)
-    for i in idx:
+    ax.scatter(meanmat[n, :, 0], meanmat[n, :, 1], s=10)
+    for i in range(len(keywords)):
         ax.annotate(keywords[i], (meanmat[n, i, 0], meanmat[n, i, 1]), fontsize=10)
     plt.savefig('./result/{}월/center{}.png'.format(month, n), 
                 dpi=200, bbox_inches="tight", pad_inches=0.1)
-#%%
-n = 1
-meanmat = np.array(mean)
-idx = np.where(np.diag(Atest_.toarray()[n, :].reshape(PARAMS['keywords'], PARAMS['keywords'])) > 0)[0]
-fig, ax = plt.subplots(figsize=(20, 20))
-# ax.set_xlim(np.min(meanmat[n, idx, 0]), np.max(meanmat[n, idx, 0]))
-# ax.set_ylim(np.min(meanmat[n, idx, 1]), np.max(meanmat[n, idx, 1]))
-ax.scatter(meanmat[n, :, 0], meanmat[n, :, 1], s=10)
-for i in range(len(keywords)):
-    ax.annotate(keywords[i], (meanmat[n, i, 0], meanmat[n, i, 1]), fontsize=10)
 #%%
 # reconstruction
 # def sigmoid(z):
