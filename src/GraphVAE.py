@@ -160,16 +160,30 @@ mean, logvar, z, Ahat = model(Atest_tilde)
 #     plt.savefig('./result/{}월/center{}.png'.format(month, n), 
 #                 dpi=200, bbox_inches="tight", pad_inches=0.1)
 
-for n in range(len(z)):
-    meanmat = np.array(mean)
-    fig, ax = plt.subplots(figsize=(10, 10))
-    # ax.set_xlim(np.min(meanmat[n, idx, 0]), np.max(meanmat[n, idx, 0]))
-    # ax.set_ylim(np.min(meanmat[n, idx, 1]), np.max(meanmat[n, idx, 1]))
-    ax.scatter(meanmat[n, :, 0], meanmat[n, :, 1], s=10)
-    for i in range(len(keywords)):
-        ax.annotate(keywords[i], (meanmat[n, i, 0], meanmat[n, i, 1]), fontsize=10)
-    plt.savefig('./result/{}월/center{}.png'.format(month, n), 
-                dpi=200, bbox_inches="tight", pad_inches=0.1)
+'''article의 대표벡터'''
+meanmat = np.array(mean)
+idx = np.where(Atest_.toarray().reshape(-1, PARAMS['keywords'], PARAMS['keywords'])[:, di[0], di[1]] > 0)
+meanmat = np.unique(meanmat[idx[0], idx[1], :], axis=0)
+plt.figure(figsize=(7, 7))
+plt.rc('xtick', labelsize=10)   
+plt.rc('ytick', labelsize=10)   
+plt.scatter(meanmat[:, 0], meanmat[:, 1], c=[[i]*100 for i in range(10)], s=10, cmap=plt.cm.Reds, alpha=1)
+plt.savefig('./result/clustering.png', 
+            dpi=200, bbox_inches="tight", pad_inches=0.1)
+
+# for n in range(len(z)):
+    # meanmat = np.array(mean)
+    # fig, ax = plt.subplots(figsize=(10, 10))
+    # # ax.set_xlim(np.min(meanmat[n, idx, 0]), np.max(meanmat[n, idx, 0]))
+    # # ax.set_ylim(np.min(meanmat[n, idx, 1]), np.max(meanmat[n, idx, 1]))
+    # ax.scatter(meanmat[n, :, 0], meanmat[n, :, 1], s=10)
+    # for i in range(len(keywords)):
+    #     ax.annotate(keywords[i], (meanmat[n, i, 0], meanmat[n, i, 1]), fontsize=10)
+    # # plt.savefig('./result/center{}.png'.format(n), 
+    # #             dpi=200, bbox_inches="tight", pad_inches=0.1)
+#%%
+'''시간에 따른 기사의 대표벡터 변화'''
+
 #%%
 # reconstruction
 # def sigmoid(z):
@@ -184,7 +198,7 @@ ax.plot(bce_losses, color='black', label='neg BCE')
 ax.plot(kl_losses, color='darkorange', label='neg KL')
 ax.plot(elbo, color='red', label='ELBO')
 leg = ax.legend(fontsize=15, loc='lower right')
-plt.savefig('./result/{}월/learning_phase.png'.format(month), 
+plt.savefig('./result/learning_phase.png', 
             dpi=200, bbox_inches="tight", pad_inches=0.1)
 plt.show()
 plt.close()
