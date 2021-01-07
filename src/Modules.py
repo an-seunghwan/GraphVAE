@@ -30,9 +30,11 @@ class GraphVAE(K.models.Model):
         assert z.shape == (x.shape[0], self.params['keywords'], self.params['latent_dim'])
         
         # decoder
-        Ahat = tf.reshape(tf.matmul(z, tf.transpose(z, [0, 2, 1])), (-1, self.params['keywords'] * self.params['keywords']))
+        Ahat = tf.matmul(z, tf.transpose(z, [0, 2, 1]))
+        # Ahat = tf.reshape(tf.matmul(z, tf.transpose(z, [0, 2, 1])), (-1, self.params['keywords'] * self.params['keywords']))
         # assert Ahat.shape == (self.params["batch_size"], self.params['keywords'] * self.params['keywords'])
-        assert Ahat.shape == (x.shape[0], self.params['keywords'] * self.params['keywords'])
+        assert Ahat.shape == (x.shape[0], self.params['keywords'], self.params['keywords'])
+        # assert Ahat.shape == (x.shape[0], self.params['keywords'] * self.params['keywords'])
         
         return mean, logvar, z, Ahat
 #%%
@@ -73,12 +75,14 @@ def get_learning_rate(epoch, init, PARAMS):
 #%%
 def loss_function(Ahat, A, mean, logvar, beta, PARAMS):
     # reconstruction
-    error = tf.reduce_mean(K.losses.binary_crossentropy(A, Ahat, from_logits=True))
-    
+    # error = tf.reduce_mean(K.losses.binary_crossentropy(A, Ahat, from_logits=True))
+    '''가중치 부여'''
+    error = tf.reduce_mean(tf.multiply((beta*A)+1, tf.nn.sigmoid_cross_entropy_with_logits(A, Ahat)))
+        
     # KL loss by closed form
     kl = tf.reduce_mean(
         tf.reduce_sum(0.5 * (tf.math.pow(mean, 2) - 1 + tf.math.exp(logvar) - logvar), axis=(1, 2))
         )
         
-    return error + beta * kl, error, kl
+    return error + kl, error, kl
 #%%

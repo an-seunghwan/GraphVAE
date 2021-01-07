@@ -37,7 +37,7 @@ PARAMS = {
     "latent_dim": 2,
     "sigma": 1,
     "epochs": 100, 
-    "beta_final": 1, # variance of observation model
+    "beta_final": 2, 
     # "kl_anneal_rate": 0.05,
     # "logistic_anneal": True,
     "learning_rate": 0.01,
@@ -56,18 +56,23 @@ Atest_ = sparse.load_npz('/Users/anseunghwan/Documents/uos/textmining/data/{}월
 Atest = Atest_.toarray().reshape((-1, PARAMS['keywords'], PARAMS['keywords']))
 Atest[:, di[0], di[1]] = 1
 
-# degree matrix
+'''degree matrix'''
 I = np.eye(PARAMS['keywords'])
 D = I[None, :, :] * np.sqrt(1 / (np.sum(Atest[:, di[0], di[1]], axis=-1) - 1))[:, None, None]
-Atest_tilde = tf.cast(D @ Atest @ D, tf.float32)
+'''matmul with tensorflow (faster)'''
+# Atest_tilde = tf.cast(D @ Atest @ D, tf.float32)
+Atest_tilde = tf.matmul(tf.matmul(tf.cast(D, tf.float32), tf.cast(Atest, tf.float32)), tf.cast(D, tf.float32))
+'''reshape'''
 # A = tf.reshape(tf.cast(A, tf.float32), (-1, PARAMS['keywords'] * PARAMS['keywords']))
-Atest = Atest.reshape(-1, PARAMS['keywords'] * PARAMS['keywords'])
+# Atest = tf.reshape(tf.cast(Atest, tf.float32), (-1, PARAMS['keywords'] * PARAMS['keywords']))
+# Atest = Atest.reshape(-1, PARAMS['keywords'] * PARAMS['keywords'])
 
 filelist.remove(filelist[testn])
 #%%
 model = Modules.GraphVAE(PARAMS)
 learning_rate = tf.Variable(PARAMS["learning_rate"], trainable=False, name="LR")
-optimizer = tf.keras.optimizers.RMSprop(learning_rate)
+optimizer = K.optimizers.RMSprop(learning_rate)
+# bce_loss = tf.keras.losses.BinaryCrossentropy(from_logits=True, reduction=tf.keras.losses.Reduction.NONE)
 
 elbo = []
 bce_losses = []
@@ -89,9 +94,16 @@ for epoch in range(1, PARAMS["epochs"] + 1):
         
         '''degree matrix'''
         D = I[None, :, :] * np.sqrt(1 / (np.sum(A[:, di[0], di[1]], axis=-1) - 1))[:, None, None]
-        A_tilde = tf.cast(D @ A @ D, tf.float32)
+        
+        '''input adjacency'''
+        '''matmul with tensorflow (faster)'''
+        # A_tilde = tf.cast(D @ A @ D, tf.float32)
+        D = tf.cast(D, tf.float32)
+        A = tf.cast(A, tf.float32)
+        A_tilde = tf.matmul(tf.matmul(D, A), D)
+        '''reshape'''
         # A = tf.reshape(tf.cast(A, tf.float32), (-1, PARAMS['keywords'] * PARAMS['keywords']))
-        A = A.reshape(-1, PARAMS['keywords'] * PARAMS['keywords'])
+        # A = A.reshape(-1, PARAMS['keywords'] * PARAMS['keywords'])
                 
         with tf.GradientTape(persistent=True) as tape:
             mean, logvar, z, Ahat = model(A_tilde)

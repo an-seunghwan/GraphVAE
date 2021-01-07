@@ -1,16 +1,4 @@
 #%%
-import tensorflow as tf
-import tensorflow.keras as K
-from tensorflow.keras import layers
-from tensorflow.keras import preprocessing
-print('TensorFlow version:', tf.__version__)
-print('Eager Execution Mode:', tf.executing_eagerly())
-print('available GPU:', tf.config.list_physical_devices('GPU'))
-from tensorflow.python.client import device_lib
-print('==========================================')
-print(device_lib.list_local_devices())
-tf.debugging.set_log_device_placement(False)
-#%%
 from tqdm import tqdm
 import pandas as pd
 import numpy as np
