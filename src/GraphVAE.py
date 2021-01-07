@@ -164,10 +164,10 @@ mean, logvar, z, Ahat = model(Atest_tilde)
 meanmat = np.array(mean)
 idx = np.where(Atest_.toarray().reshape(-1, PARAMS['keywords'], PARAMS['keywords'])[:, di[0], di[1]] > 0)
 meanmat = np.unique(meanmat[idx[0], idx[1], :], axis=0)
-plt.figure(figsize=(7, 7))
+plt.figure(figsize=(10, 10))
 plt.rc('xtick', labelsize=10)   
 plt.rc('ytick', labelsize=10)   
-plt.scatter(meanmat[:, 0], meanmat[:, 1], c=[[i]*100 for i in range(10)], s=10, cmap=plt.cm.Reds, alpha=1)
+plt.scatter(meanmat[:, 0], meanmat[:, 1], c=[[i]*100 for i in range(10)], s=15, cmap=plt.cm.Reds, alpha=1)
 plt.savefig('./result/clustering.png', 
             dpi=200, bbox_inches="tight", pad_inches=0.1)
 
