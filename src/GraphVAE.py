@@ -51,18 +51,23 @@ filelist = sorted([f for f in os.listdir('/Users/anseunghwan/Documents/uos/textm
 # testn = np.argmin(np.array([os.path.getsize('/Users/anseunghwan/Documents/uos/textmining/data/' + f) for f in filelist]))
 testn = len(filelist)-1
 
+I = np.eye(PARAMS['keywords'])
 '''validation(test)'''
 Atest_ = sparse.load_npz('/Users/anseunghwan/Documents/uos/textmining/data/Atest.npz')
 Atest = Atest_.toarray().reshape((-1, PARAMS['keywords'], PARAMS['keywords']))
-Atest[:, di[0], di[1]] = 1
 
-'''degree matrix'''
-I = np.eye(PARAMS['keywords'])
-D = I[None, :, :] * np.sqrt(1 / (np.sum(Atest[:, di[0], di[1]], axis=-1) - 1))[:, None, None]
+'''degree matrix (every node connected to itself'''
+# D = I[None, :, :] * np.sqrt(1 / np.sum(Atest_[:, di[0], di[1]], axis=-1))[:, None, None]
+D = Atest[:, di[0], di[1]] * np.sqrt(1 / np.sum(Atest[:, di[0], di[1]], axis=-1, keepdims=True))
+D[np.where(D == 0)] = 1
+D = I[None, :, :] * D[:, None]
+Atest[:, di[0], di[1]] = 1 # diagonal element
+
 '''matmul with tensorflow (faster)'''
 # Atest_tilde = tf.cast(D @ Atest @ D, tf.float32)
 Atest = tf.cast(Atest, tf.float32)
 Atest_tilde = tf.matmul(tf.matmul(tf.cast(D, tf.float32), Atest), tf.cast(D, tf.float32))
+
 '''reshape'''
 # A = tf.reshape(tf.cast(A, tf.float32), (-1, PARAMS['keywords'] * PARAMS['keywords']))
 # Atest = tf.reshape(tf.cast(Atest, tf.float32), (-1, PARAMS['keywords'] * PARAMS['keywords']))
@@ -91,10 +96,13 @@ for epoch in range(1, PARAMS["epochs"] + 1):
         '''adjacency matrix'''
         A = sparse.load_npz('/Users/anseunghwan/Documents/uos/textmining/data/' + filelist[i])
         A = A.toarray().reshape((-1, PARAMS['keywords'], PARAMS['keywords']))
-        A[:, di[0], di[1]] = 1 # diagonal element
         
         '''degree matrix'''
-        D = I[None, :, :] * np.sqrt(1 / (np.sum(A[:, di[0], di[1]], axis=-1) - 1))[:, None, None]
+        # D = I[None, :, :] * np.sqrt(1 / (np.sum(A[:, di[0], di[1]], axis=-1) - 1))[:, None, None]
+        D = A[:, di[0], di[1]] * np.sqrt(1 / np.sum(A[:, di[0], di[1]], axis=-1, keepdims=True))
+        D[np.where(D == 0)] = 1
+        D = I[None, :, :] * D[:, None]
+        A[:, di[0], di[1]] = 1 # diagonal element
         
         '''input adjacency'''
         '''matmul with tensorflow (faster)'''
@@ -102,6 +110,7 @@ for epoch in range(1, PARAMS["epochs"] + 1):
         D = tf.cast(D, tf.float32)
         A = tf.cast(A, tf.float32)
         A_tilde = tf.matmul(tf.matmul(D, A), D)
+        
         '''reshape'''
         # A = tf.reshape(tf.cast(A, tf.float32), (-1, PARAMS['keywords'] * PARAMS['keywords']))
         # A = A.reshape(-1, PARAMS['keywords'] * PARAMS['keywords'])
@@ -222,8 +231,32 @@ plt.savefig('./result/clustering2.png',
     # # plt.savefig('./result/center{}.png'.format(n), 
     # #             dpi=200, bbox_inches="tight", pad_inches=0.1)
 #%%
-'''시간에 따른 기사의 대표벡터 변화'''
+'''test data 분석'''
+Atest_ = Atest_.toarray().reshape(-1, PARAMS['keywords'], PARAMS['keywords'])[:, di[0], di[1]]
 
+test_words = []
+for i in range(len(Atest_)):
+    test_words.append([keywords[w] for w in np.where(Atest_[i, :] == 1)[0]])
+    
+# test words save
+with open("./result/test_words.txt", "w") as f:
+    for w in test_words:
+        f.write(' '.join(w) + '\n')
+
+plt.figure(figsize=(10, 10))
+for j in range(10):
+    plt.subplot(5, 2, j+1)
+    count = {x:0 for x in keywords}
+    temp = sum(test_words[100*j:100*(j+1)], [])
+    for i in range(len(temp)):
+        count[temp[i]] = count.get(temp[i]) + 1
+    plt.bar(range(len(count)), list(count.values()), align='center')
+    plt.title('{}월'.format(j+1))
+    # plt.xticks(range(len(count)), list(count.keys()))
+    plt.tight_layout() 
+plt.savefig('./result/test_freq.png', 
+            dpi=200, bbox_inches="tight", pad_inches=0.1)
+plt.show()
 #%%
 # reconstruction
 # def sigmoid(z):
