@@ -76,8 +76,8 @@ Atest_tilde = tf.matmul(tf.matmul(tf.cast(D, tf.float32), Atest), tf.cast(D, tf.
 filelist.remove(filelist[testn])
 #%%
 model = Modules.GraphVAE(PARAMS)
-learning_rate = tf.Variable(PARAMS["learning_rate"], trainable=False, name="LR")
-optimizer = K.optimizers.RMSprop(learning_rate)
+# learning_rate = tf.Variable(PARAMS["learning_rate"], trainable=False, name="LR")
+optimizer = K.optimizers.Adam(PARAMS["learning_rate"])
 # bce_loss = tf.keras.losses.BinaryCrossentropy(from_logits=True, reduction=tf.keras.losses.Reduction.NONE)
 
 elbo = []
@@ -104,7 +104,7 @@ for epoch in range(1, PARAMS["epochs"] + 1):
         D = I[None, :, :] * D[:, None]
         A[:, di[0], di[1]] = 1 # diagonal element
         
-        '''input adjacency'''
+        '''input normalized adjacency'''
         '''matmul with tensorflow (faster)'''
         # A_tilde = tf.cast(D @ A @ D, tf.float32)
         D = tf.cast(D, tf.float32)
@@ -127,8 +127,8 @@ for epoch in range(1, PARAMS["epochs"] + 1):
         optimizer.apply_gradients(zip(grad, model.weights))
     
     # change temperature and learning rate
-    new_lr = Modules.get_learning_rate(epoch, PARAMS['learning_rate'], PARAMS)
-    learning_rate.assign(new_lr)
+    # new_lr = Modules.get_learning_rate(epoch, PARAMS['learning_rate'], PARAMS)
+    # learning_rate.assign(new_lr)
 
     print('\n')
     print("Epoch:", epoch, ", TRAIN loss:", loss.numpy())
@@ -144,41 +144,43 @@ for epoch in range(1, PARAMS["epochs"] + 1):
 np.save('./result/mean_weight', model.weights[0].numpy())
 np.save('./result/logvar_weight', model.weights[1].numpy())
 
-meanmat = np.array(mean)
-idx = np.where(Atest_.toarray().reshape(-1, PARAMS['keywords'], PARAMS['keywords'])[:, di[0], di[1]] > 0)
-meanmat = np.unique(meanmat[idx[0], idx[1], :], axis=0)
-plt.figure(figsize=(10, 10))
-plt.rc('xtick', labelsize=10)   
-plt.rc('ytick', labelsize=10)   
-plt.scatter(meanmat[:, 0], meanmat[:, 1], c=sum([[i]*100 for i in range(10)], []), s=15, cmap=plt.cm.Reds, alpha=1)
-plt.savefig('./result/clustering.png', 
-            dpi=200, bbox_inches="tight", pad_inches=0.1)
+# meanmat = np.array(mean)
+# idx = np.where(Atest_.toarray().reshape(-1, PARAMS['keywords'], PARAMS['keywords'])[:, di[0], di[1]] > 0)
+# meanmat = np.unique(meanmat[idx[0], idx[1], :], axis=0)
+# plt.figure(figsize=(10, 10))
+# plt.rc('xtick', labelsize=10)   
+# plt.rc('ytick', labelsize=10)   
+# plt.scatter(meanmat[:, 0], meanmat[:, 1], c=sum([[i]*100 for i in range(10)], []), s=15, cmap=plt.cm.Reds, alpha=1)
+# plt.savefig('./result/clustering.png', 
+#             dpi=200, bbox_inches="tight", pad_inches=0.1)
+
+mean, logvar, z, Ahat = model(Atest_tilde)
 #%%
 '''load model'''
-wmean = np.load('./result/mean_weight.npy')
-wlogvar = np.load('./result/logvar_weight.npy')
-mean_layer2 = layers.Dense(PARAMS['latent_dim'], activation='linear',
-                            use_bias=False)
-logvar_layer2 = layers.Dense(PARAMS['latent_dim'], activation='linear',
-                            use_bias=False)
-mean_layer2(tf.ones((1, 300, 300)))
-logvar_layer2(tf.ones((1, 300, 300)))
-mean_layer2.set_weights([wmean])
-logvar_layer2.set_weights([wlogvar])
+# wmean = np.load('./result/mean_weight.npy')
+# wlogvar = np.load('./result/logvar_weight.npy')
+# mean_layer2 = layers.Dense(PARAMS['latent_dim'], activation='linear',
+#                             use_bias=False)
+# logvar_layer2 = layers.Dense(PARAMS['latent_dim'], activation='linear',
+#                             use_bias=False)
+# mean_layer2(tf.ones((1, 300, 300)))
+# logvar_layer2(tf.ones((1, 300, 300)))
+# mean_layer2.set_weights([wmean])
+# logvar_layer2.set_weights([wlogvar])
 
-# model
-input_layer = layers.Input((PARAMS['keywords'], PARAMS['keywords']))
-mean_ = mean_layer2(input_layer)
-logvar_ = logvar_layer2(input_layer)
-epsilon = tf.random.normal((PARAMS['keywords'], PARAMS['latent_dim']))
-z_ = mean_ + tf.math.exp(logvar_ / 2) * epsilon 
-Ahat_ = tf.matmul(z_, tf.transpose(z_, [0, 2, 1]))
-model2 = K.models.Model(input_layer, [mean_, logvar_, z_, Ahat_])
+# # model
+# input_layer = layers.Input((PARAMS['keywords'], PARAMS['keywords']))
+# mean_ = mean_layer2(input_layer)
+# logvar_ = logvar_layer2(input_layer)
+# epsilon = tf.random.normal((PARAMS['keywords'], PARAMS['latent_dim']))
+# z_ = mean_ + tf.math.exp(logvar_ / 2) * epsilon 
+# Ahat_ = tf.matmul(z_, tf.transpose(z_, [0, 2, 1]))
+# model2 = K.models.Model(input_layer, [mean_, logvar_, z_, Ahat_])
 
-mean, logvar, z, Ahat = model2(Atest_tilde)
+# mean, logvar, z, Ahat = model2(Atest_tilde)
 #%%
 '''
-각 기사(n)에서 사용된 keyword들에 대해서만 z를 sampling하고 시각화
+각 기사(n)에서 사용된 keyword들에 대해서만 z를 sampling
 '''
 # for n in range(len(z)):
 #     zmat = np.array(z)
@@ -191,7 +193,7 @@ mean, logvar, z, Ahat = model2(Atest_tilde)
 #                 dpi=200, bbox_inches="tight", pad_inches=0.1)
 #%%
 '''
-각 기사(n)에서 사용된 keyword들에 대해서 z의 center를 시각화
+각 기사(n)에서 사용된 keyword들에 대해서 z의 center
 '''
 # for n in range(len(z)):
 #     meanmat = np.array(mean)
@@ -205,7 +207,9 @@ mean, logvar, z, Ahat = model2(Atest_tilde)
 #     plt.savefig('./result/{}월/center{}.png'.format(month, n), 
 #                 dpi=200, bbox_inches="tight", pad_inches=0.1)
 
-'''article의 대표벡터'''
+'''
+article의 대표벡터
+'''
 meanmat = np.array(mean)
 idx = np.where(Atest_.toarray().reshape(-1, PARAMS['keywords'], PARAMS['keywords'])[:, di[0], di[1]] > 0)
 meanmat = np.unique(meanmat[idx[0], idx[1], :], axis=0)
