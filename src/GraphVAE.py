@@ -36,11 +36,11 @@ PARAMS = {
     "keywords": 300,
     "latent_dim": 2,
     "sigma": 1,
-    "epochs": 100, 
+    "epochs": 10, 
     "beta": 1, 
     # "kl_anneal_rate": 0.05,
     # "logistic_anneal": True,
-    "learning_rate": 0.05,
+    "learning_rate": 0.1,
 }
 
 with open("./result/keywords.txt", "r") as f:
@@ -56,7 +56,7 @@ I = np.eye(PARAMS['keywords'])
 Atest_ = sparse.load_npz('/Users/anseunghwan/Documents/uos/textmining/data/Atest.npz')
 Atest = Atest_.toarray().reshape((-1, PARAMS['keywords'], PARAMS['keywords']))
 
-'''degree matrix (every node connected to itself'''
+'''degree matrix (every node connected to itself)'''
 # D = I[None, :, :] * np.sqrt(1 / np.sum(Atest_[:, di[0], di[1]], axis=-1))[:, None, None]
 D = Atest[:, di[0], di[1]] * np.sqrt(1 / np.sum(Atest[:, di[0], di[1]], axis=-1, keepdims=True))
 D[np.where(D == 0)] = 1
@@ -80,6 +80,8 @@ model = Modules.GraphVAE(PARAMS)
 optimizer = K.optimizers.Adam(PARAMS["learning_rate"])
 # bce_loss = tf.keras.losses.BinaryCrossentropy(from_logits=True, reduction=tf.keras.losses.Reduction.NONE)
 
+I = tf.eye(PARAMS['keywords'], PARAMS['keywords'])
+
 elbo = []
 bce_losses = []
 kl_losses = []
@@ -101,13 +103,14 @@ for epoch in range(1, PARAMS["epochs"] + 1):
         # D = I[None, :, :] * np.sqrt(1 / (np.sum(A[:, di[0], di[1]], axis=-1) - 1))[:, None, None]
         D = A[:, di[0], di[1]] * np.sqrt(1 / np.sum(A[:, di[0], di[1]], axis=-1, keepdims=True))
         D[np.where(D == 0)] = 1
-        D = I[None, :, :] * D[:, None]
-        A[:, di[0], di[1]] = 1 # diagonal element
+        D = tf.multiply(I[tf.newaxis, :, :], tf.cast(D, tf.float32)[:, tf.newaxis])
+        # D = I[None, :, :] * D[:, None]
+        A[:, di[0], di[1]] = 1 # diagonal element set 1
         
         '''input normalized adjacency'''
         '''matmul with tensorflow (faster)'''
         # A_tilde = tf.cast(D @ A @ D, tf.float32)
-        D = tf.cast(D, tf.float32)
+        # D = tf.cast(D, tf.float32)
         A = tf.cast(A, tf.float32)
         A_tilde = tf.matmul(tf.matmul(D, A), D)
         
@@ -151,7 +154,7 @@ np.save('./result/logvar_weight', model.weights[1].numpy())
 # plt.rc('xtick', labelsize=10)   
 # plt.rc('ytick', labelsize=10)   
 # plt.scatter(meanmat[:, 0], meanmat[:, 1], c=sum([[i]*100 for i in range(10)], []), s=15, cmap=plt.cm.Reds, alpha=1)
-# plt.savefig('./result/clustering.png', 
+# plt.savefig('./result/clustering2.png', 
 #             dpi=200, bbox_inches="tight", pad_inches=0.1)
 
 mean, logvar, z, Ahat = model(Atest_tilde)
@@ -204,25 +207,43 @@ mean, logvar, z, Ahat = model(Atest_tilde)
 #     ax.scatter(meanmat[n, idx, 0], meanmat[n, idx, 1], s=10)
 #     for i in idx:
 #         ax.annotate(keywords[i], (meanmat[n, i, 0], meanmat[n, i, 1]), fontsize=10)
-#     plt.savefig('./result/{}월/center{}.png'.format(month, n), 
+#     plt.savefig('./result/center{}.png'.format(n), 
 #                 dpi=200, bbox_inches="tight", pad_inches=0.1)
 
 '''
 article의 대표벡터
 '''
 meanmat = np.array(mean)
-idx = np.where(Atest_.toarray().reshape(-1, PARAMS['keywords'], PARAMS['keywords'])[:, di[0], di[1]] > 0)
-meanmat = np.unique(meanmat[idx[0], idx[1], :], axis=0)
+# idx = np.where(Atest_.toarray().reshape(-1, PARAMS['keywords'], PARAMS['keywords'])[:, di[0], di[1]] > 0)
+# meanmat = np.unique(meanmat[idx[0], idx[1], :], axis=0)
+article = []
+for n in tqdm(range(1000)):
+    idx = np.where(Atest_.toarray()[n, :].reshape(PARAMS['keywords'], PARAMS['keywords'])[di[0], di[1]] > 0)
+    article.extend(np.unique(meanmat[n, idx[0], :], axis=0))
+article = np.array(article)
 plt.figure(figsize=(10, 10))
 plt.rc('xtick', labelsize=10)   
 plt.rc('ytick', labelsize=10)   
-plt.scatter(meanmat[:, 0], meanmat[:, 1], c=sum([[i]*100 for i in range(10)], []), s=15, cmap=plt.cm.Reds, alpha=1)
-plt.savefig('./result/clustering2.png', 
+plt.scatter(article[:, 0], article[:, 1], c=sum([[i]*100 for i in range(10)], []), s=15, cmap=plt.cm.Reds, alpha=1)
+plt.savefig('./result/clustering.png', 
             dpi=200, bbox_inches="tight", pad_inches=0.1)
-# fig, ax = plt.subplots(figsize=(7, 7))
-# ax.scatter(meanmat[:, 0], meanmat[:, 1], c=[[i]*100 for i in range(10)], s=15, cmap=plt.cm.Reds, alpha=1)
-# for i in range(len(meanmat)):
-#     ax.annotate(str(i), (meanmat[i, 0], meanmat[i, 1]), fontsize=10)
+#%%
+'''
+월별 대표벡터
+'''
+meanmat = np.array(mean)
+for k in range(10):
+    article = []
+    for n in tqdm(range(100*i, 100*(i+1))):
+        idx = np.where(Atest_.toarray()[n, :].reshape(PARAMS['keywords'], PARAMS['keywords'])[di[0], di[1]] > 0)
+        article.extend(np.unique(meanmat[n, idx[0], :], axis=0))
+    article = np.array(article)
+    plt.figure(figsize=(10, 10))
+    plt.rc('xtick', labelsize=10)   
+    plt.rc('ytick', labelsize=10)   
+    plt.scatter(article[:, 0], article[:, 1], s=15)
+    plt.savefig('./result/clustering_{}.png'.format(k), 
+                dpi=200, bbox_inches="tight", pad_inches=0.1)
 
 # for n in range(len(z)):
     # meanmat = np.array(mean)
@@ -234,6 +255,17 @@ plt.savefig('./result/clustering2.png',
     #     ax.annotate(keywords[i], (meanmat[n, i, 0], meanmat[n, i, 1]), fontsize=10)
     # # plt.savefig('./result/center{}.png'.format(n), 
     # #             dpi=200, bbox_inches="tight", pad_inches=0.1)
+#%%
+'''embedding vector'''
+emb = model.weights[0].numpy()
+fig, ax = plt.subplots(figsize=(20, 20))
+# ax.set_xlim(np.min(meanmat[n, idx, 0]), np.max(meanmat[n, idx, 0]))
+# ax.set_ylim(np.min(meanmat[n, idx, 1]), np.max(meanmat[n, idx, 1]))
+ax.scatter(emb[:, 0], emb[:, 1], s=10)
+for i in range(len(keywords)):
+    ax.annotate(keywords[i], (emb[i, 0], emb[i, 1]), fontsize=10)
+plt.savefig('./result/emb.png', 
+            dpi=200, bbox_inches="tight", pad_inches=0.1)
 #%%
 '''test data 분석'''
 Atest_ = Atest_.toarray().reshape(-1, PARAMS['keywords'], PARAMS['keywords'])[:, di[0], di[1]]
