@@ -40,7 +40,7 @@ PARAMS = {
     "beta": 1, 
     # "kl_anneal_rate": 0.05,
     # "logistic_anneal": True,
-    "learning_rate": 0.01,
+    "learning_rate": 0.05,
 }
 
 with open("./result/keywords.txt", "r") as f:
@@ -125,6 +125,7 @@ for epoch in range(1, PARAMS["epochs"] + 1):
     print("Epoch:", epoch, ", TRAIN loss:", loss.numpy())
     print("BCE:", bce.numpy(), ", KL loss:", kl_loss.numpy(), ", beta:", PARAMS['beta'])
     
+    # test
     mean, logvar, z, Ahat = model(Atest_tilde)
     loss, _, _ = Modules.loss_function(Ahat, Atest, mean, logvar, PARAMS['beta'], PARAMS) 
     print("Eval Loss:", loss.numpy()) 
@@ -133,6 +134,16 @@ for epoch in range(1, PARAMS["epochs"] + 1):
 '''model save'''
 np.save('./result/mean_weight', model.weights[0].numpy())
 np.save('./result/logvar_weight', model.weights[1].numpy())
+
+meanmat = np.array(mean)
+idx = np.where(Atest_.toarray().reshape(-1, PARAMS['keywords'], PARAMS['keywords'])[:, di[0], di[1]] > 0)
+meanmat = np.unique(meanmat[idx[0], idx[1], :], axis=0)
+plt.figure(figsize=(10, 10))
+plt.rc('xtick', labelsize=10)   
+plt.rc('ytick', labelsize=10)   
+plt.scatter(meanmat[:, 0], meanmat[:, 1], c=sum([[i]*100 for i in range(10)], []), s=15, cmap=plt.cm.Reds, alpha=1)
+plt.savefig('./result/clustering.png', 
+            dpi=200, bbox_inches="tight", pad_inches=0.1)
 #%%
 '''load model'''
 wmean = np.load('./result/mean_weight.npy')
@@ -146,16 +157,13 @@ logvar_layer2(tf.ones((1, 300, 300)))
 mean_layer2.set_weights([wmean])
 logvar_layer2.set_weights([wlogvar])
 
+# model
 input_layer = layers.Input((PARAMS['keywords'], PARAMS['keywords']))
-
 mean_ = mean_layer2(input_layer)
 logvar_ = logvar_layer2(input_layer)
-
 epsilon = tf.random.normal((PARAMS['keywords'], PARAMS['latent_dim']))
 z_ = mean_ + tf.math.exp(logvar_ / 2) * epsilon 
-
 Ahat_ = tf.matmul(z_, tf.transpose(z_, [0, 2, 1]))
-
 model2 = K.models.Model(input_layer, [mean_, logvar_, z_, Ahat_])
 
 mean, logvar, z, Ahat = model2(Atest_tilde)
@@ -196,7 +204,7 @@ plt.figure(figsize=(10, 10))
 plt.rc('xtick', labelsize=10)   
 plt.rc('ytick', labelsize=10)   
 plt.scatter(meanmat[:, 0], meanmat[:, 1], c=sum([[i]*100 for i in range(10)], []), s=15, cmap=plt.cm.Reds, alpha=1)
-plt.savefig('./result/clustering.png', 
+plt.savefig('./result/clustering2.png', 
             dpi=200, bbox_inches="tight", pad_inches=0.1)
 # fig, ax = plt.subplots(figsize=(7, 7))
 # ax.scatter(meanmat[:, 0], meanmat[:, 1], c=[[i]*100 for i in range(10)], s=15, cmap=plt.cm.Reds, alpha=1)
