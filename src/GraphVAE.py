@@ -224,7 +224,7 @@ article = np.array(article)
 plt.figure(figsize=(10, 10))
 plt.rc('xtick', labelsize=10)   
 plt.rc('ytick', labelsize=10)   
-plt.scatter(article[:, 0], article[:, 1], c=sum([[i]*100 for i in range(10)], []), s=15, cmap=plt.cm.Reds, alpha=1)
+plt.scatter(article[:, 0], article[:, 1], c=sum([[i]*100 for i in range(10)[::-1]], []), s=15, cmap=plt.cm.Reds, alpha=1)
 plt.savefig('./result/clustering.png', 
             dpi=200, bbox_inches="tight", pad_inches=0.1)
 #%%
@@ -234,13 +234,16 @@ plt.savefig('./result/clustering.png',
 meanmat = np.array(mean)
 for k in range(10):
     article = []
-    for n in tqdm(range(100*i, 100*(i+1))):
+    for n in tqdm(range(100*k, 100*(k+1))):
         idx = np.where(Atest_.toarray()[n, :].reshape(PARAMS['keywords'], PARAMS['keywords'])[di[0], di[1]] > 0)
         article.extend(np.unique(meanmat[n, idx[0], :], axis=0))
     article = np.array(article)
     plt.figure(figsize=(10, 10))
     plt.rc('xtick', labelsize=10)   
-    plt.rc('ytick', labelsize=10)   
+    plt.rc('ytick', labelsize=10)  
+    # plt.xlim((np.min(meanmat[:, 0]), np.max(meanmat[:, 0])))
+    # plt.ylim((np.min(meanmat[:, 1]), np.max(meanmat[:, 1])))
+    plt.title('{}월'.format(k+1)) 
     plt.scatter(article[:, 0], article[:, 1], s=15)
     plt.savefig('./result/clustering_{}.png'.format(k), 
                 dpi=200, bbox_inches="tight", pad_inches=0.1)
