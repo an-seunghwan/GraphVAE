@@ -40,7 +40,7 @@ PARAMS = {
     "beta": 1, 
     # "kl_anneal_rate": 0.05,
     # "logistic_anneal": True,
-    "learning_rate": 0.1,
+    "learning_rate": 0.01,
 }
 
 with open("./result/keywords.txt", "r") as f:
@@ -239,7 +239,7 @@ for k in range(10):
         idx = np.where(Atest_.toarray()[n, :].reshape(PARAMS['keywords'], PARAMS['keywords'])[di[0], di[1]] > 0)
         article.extend(np.unique(meanmat[n, idx[0], :], axis=0))
     article = np.array(article)
-    plt.figure(figsize=(7, 7))
+    plt.figure(figsize=(10, 10))
     plt.rc('xtick', labelsize=10)   
     plt.rc('ytick', labelsize=10)  
     # plt.xlim((np.min(meanmat[:, 0]), np.max(meanmat[:, 0])))
