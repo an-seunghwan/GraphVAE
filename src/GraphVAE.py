@@ -118,7 +118,7 @@ for epoch in range(1, PARAMS["epochs"] + 1):
         # A = tf.reshape(tf.cast(A, tf.float32), (-1, PARAMS['keywords'] * PARAMS['keywords']))
         # A = A.reshape(-1, PARAMS['keywords'] * PARAMS['keywords'])
                 
-        with tf.GradientTape(persistent=True) as tape:
+        with tf.GradientTape(persistent=False) as tape:
             mean, logvar, z, Ahat = model(A_tilde)
             loss, bce, kl_loss = Modules.loss_function(Ahat, A, mean, logvar, PARAMS['beta'], PARAMS) 
             
@@ -225,6 +225,7 @@ plt.figure(figsize=(10, 10))
 plt.rc('xtick', labelsize=10)   
 plt.rc('ytick', labelsize=10)   
 plt.scatter(article[:, 0], article[:, 1], c=sum([[i]*100 for i in range(10)[::-1]], []), s=15, cmap=plt.cm.Reds, alpha=1)
+plt.scatter(0, 0, color='darkred', marker='D')
 plt.savefig('./result/clustering.png', 
             dpi=200, bbox_inches="tight", pad_inches=0.1)
 #%%
@@ -238,13 +239,14 @@ for k in range(10):
         idx = np.where(Atest_.toarray()[n, :].reshape(PARAMS['keywords'], PARAMS['keywords'])[di[0], di[1]] > 0)
         article.extend(np.unique(meanmat[n, idx[0], :], axis=0))
     article = np.array(article)
-    plt.figure(figsize=(10, 10))
+    plt.figure(figsize=(7, 7))
     plt.rc('xtick', labelsize=10)   
     plt.rc('ytick', labelsize=10)  
     # plt.xlim((np.min(meanmat[:, 0]), np.max(meanmat[:, 0])))
     # plt.ylim((np.min(meanmat[:, 1]), np.max(meanmat[:, 1])))
     plt.title('{}월'.format(k+1)) 
     plt.scatter(article[:, 0], article[:, 1], s=15)
+    plt.scatter(0, 0, color='darkred', marker='D')
     plt.savefig('./result/clustering_{}.png'.format(k), 
                 dpi=200, bbox_inches="tight", pad_inches=0.1)
 
@@ -266,7 +268,7 @@ fig, ax = plt.subplots(figsize=(20, 20))
 # ax.set_ylim(np.min(meanmat[n, idx, 1]), np.max(meanmat[n, idx, 1]))
 ax.scatter(emb[:, 0], emb[:, 1], s=10)
 for i in range(len(keywords)):
-    ax.annotate(keywords[i], (emb[i, 0], emb[i, 1]), fontsize=10)
+    ax.annotate(keywords[i], (emb[i, 0], emb[i, 1]), fontsize=9)
 plt.savefig('./result/emb.png', 
             dpi=200, bbox_inches="tight", pad_inches=0.1)
 #%%
