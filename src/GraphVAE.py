@@ -36,11 +36,11 @@ PARAMS = {
     "keywords": 300,
     "latent_dim": 2,
     "sigma": 1,
-    "epochs": 10, 
+    "epochs": 2, 
     "beta": 1, 
     # "kl_anneal_rate": 0.05,
     # "logistic_anneal": True,
-    "learning_rate": 0.01,
+    "learning_rate": 0.05,
 }
 
 with open("./result/keywords.txt", "r") as f:
@@ -160,8 +160,8 @@ np.save('./result/logvar_weight', model.weights[1].numpy())
 mean, logvar, z, Ahat = model(Atest_tilde)
 #%%
 '''load model'''
-# wmean = np.load('./result/mean_weight.npy')
-# wlogvar = np.load('./result/logvar_weight.npy')
+# wmean = np.load('./result/210108/mean_weight.npy')
+# wlogvar = np.load('./result/210108/logvar_weight.npy')
 # mean_layer2 = layers.Dense(PARAMS['latent_dim'], activation='linear',
 #                             use_bias=False)
 # logvar_layer2 = layers.Dense(PARAMS['latent_dim'], activation='linear',
@@ -221,10 +221,12 @@ for n in tqdm(range(1000)):
     idx = np.where(Atest_.toarray()[n, :].reshape(PARAMS['keywords'], PARAMS['keywords'])[di[0], di[1]] > 0)
     article.extend(np.unique(meanmat[n, idx[0], :], axis=0))
 article = np.array(article)
-plt.figure(figsize=(10, 10))
-plt.rc('xtick', labelsize=10)   
-plt.rc('ytick', labelsize=10)   
-plt.scatter(article[:, 0], article[:, 1], c=sum([[i]*100 for i in range(10)[::-1]], []), s=15, cmap=plt.cm.Reds, alpha=1)
+plt.figure(figsize=(15, 15))
+plt.xticks(size = 25)
+plt.yticks(size = 25)
+plt.ticklabel_format(axis="x", style="sci", scilimits=(0,0))  
+plt.ticklabel_format(axis="y", style="sci", scilimits=(0,0)) 
+plt.scatter(article[:, 0], article[:, 1], c=sum([[i]*100 for i in range(10)[::-1]], []), s=40, cmap=plt.cm.Reds, alpha=1)
 plt.scatter(0, 0, color='darkred', marker='D')
 plt.savefig('./result/clustering.png', 
             dpi=200, bbox_inches="tight", pad_inches=0.1)
@@ -239,14 +241,16 @@ for k in range(10):
         idx = np.where(Atest_.toarray()[n, :].reshape(PARAMS['keywords'], PARAMS['keywords'])[di[0], di[1]] > 0)
         article.extend(np.unique(meanmat[n, idx[0], :], axis=0))
     article = np.array(article)
-    plt.figure(figsize=(10, 10))
-    plt.rc('xtick', labelsize=10)   
-    plt.rc('ytick', labelsize=10)  
+    plt.figure(figsize=(15, 15))
+    plt.xticks(size = 20)
+    plt.yticks(size = 20)   
+    plt.ticklabel_format(axis="x", style="sci", scilimits=(0,0))  
+    plt.ticklabel_format(axis="y", style="sci", scilimits=(0,0)) 
     # plt.xlim((np.min(meanmat[:, 0]), np.max(meanmat[:, 0])))
     # plt.ylim((np.min(meanmat[:, 1]), np.max(meanmat[:, 1])))
-    plt.title('{}월'.format(k+1)) 
-    plt.scatter(article[:, 0], article[:, 1], s=15)
-    plt.scatter(0, 0, color='darkred', marker='D')
+    # plt.title('{}월'.format(k+1)) 
+    plt.scatter(article[:, 0], article[:, 1], s=70)
+    plt.scatter(0, 0, color='darkred', marker='D', s=70)
     plt.savefig('./result/clustering_{}.png'.format(k), 
                 dpi=200, bbox_inches="tight", pad_inches=0.1)
 
@@ -261,14 +265,39 @@ for k in range(10):
     # # plt.savefig('./result/center{}.png'.format(n), 
     # #             dpi=200, bbox_inches="tight", pad_inches=0.1)
 #%%
+'''
+가장 거리가 먼 기사
+'''
+meanmat = np.array(mean)
+for k in range(10):
+    print(k)
+    article = []
+    for n in range(100*k, 100*(k+1)):
+        idx = np.where(Atest_.toarray()[n, :].reshape(PARAMS['keywords'], PARAMS['keywords'])[di[0], di[1]] > 0)
+        article.extend(np.unique(meanmat[n, idx[0], :], axis=0))
+    article = np.array(article)
+    dist = np.linalg.norm(article - article[:, None], axis=-1)
+    distargs = np.sort(dist.reshape(-1, ))[-10:]
+    for j in range(10):
+        idx_ = np.where(dist == distargs[j])[0]
+        # idx_ = np.where(dist == np.max(dist))[0]
+        for u in idx_:
+            print(', '.join([keywords[i] for i in np.where(np.diag(Atest_.toarray()[100*k + u, :].reshape(300, 300)) == 1)[0]]))
+            # print(', '.join([keywords[i] for i in np.where(np.diag(Atest_.toarray()[100*k + idx_[1], :].reshape(300, 300)) == 1)[0]]))
+        print('-------------------------')
+#%%
 '''embedding vector'''
 emb = model.weights[0].numpy()
-fig, ax = plt.subplots(figsize=(20, 20))
+fig, ax = plt.subplots(figsize=(25, 25))
 # ax.set_xlim(np.min(meanmat[n, idx, 0]), np.max(meanmat[n, idx, 0]))
 # ax.set_ylim(np.min(meanmat[n, idx, 1]), np.max(meanmat[n, idx, 1]))
-ax.scatter(emb[:, 0], emb[:, 1], s=10)
+ax.scatter(emb[:, 0], emb[:, 1], s=20)
+plt.xticks(size = 30)
+plt.yticks(size = 30)
+plt.ticklabel_format(axis="x", style="sci", scilimits=(0,0))  
+plt.ticklabel_format(axis="y", style="sci", scilimits=(0,0)) 
 for i in range(len(keywords)):
-    ax.annotate(keywords[i], (emb[i, 0], emb[i, 1]), fontsize=9)
+    ax.annotate(keywords[i], (emb[i, 0], emb[i, 1]), fontsize=20)
 plt.savefig('./result/emb.png', 
             dpi=200, bbox_inches="tight", pad_inches=0.1)
 #%%
@@ -284,7 +313,7 @@ with open("./result/test_words.txt", "w") as f:
     for w in test_words:
         f.write(' '.join(w) + '\n')
 
-plt.figure(figsize=(10, 10))
+plt.figure(figsize=(20, 20))
 for j in range(10):
     plt.subplot(5, 2, j+1)
     count = {x:0 for x in keywords}
@@ -292,7 +321,9 @@ for j in range(10):
     for i in range(len(temp)):
         count[temp[i]] = count.get(temp[i]) + 1
     plt.bar(range(len(count)), list(count.values()), align='center')
-    plt.title('{}월'.format(j+1))
+    plt.xticks(size = 20)
+    plt.yticks(size = 20)
+    plt.title('{}월'.format(j+1), fontsize=30)
     # plt.xticks(range(len(count)), list(count.keys()))
     plt.tight_layout() 
 plt.savefig('./result/test_freq.png', 
